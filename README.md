@@ -2,7 +2,7 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S1 — DRIVE / ACTIVE / NOT YET IMPLEMENTED`
+> **현재 상태:** `S1 — DRIVE / S1-01 PASS / USER CONFIRMED`
 > **완료 Gate:** `S0 — BOOT & INPUT / PASS / CLOSED / USER GO APPROVED`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
@@ -85,12 +85,12 @@ C / 65816 / SNES Hardware
 
 ## S1 — DRIVE
 
-S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE이며 아직 구현을 시작하지 않은 `ACTIVE / NOT YET IMPLEMENTED` 상태입니다.
+S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE이며 S1-01은 2026-08-23 `PASS / USER CONFIRMED`됐습니다.
 
-다음 구현 작업:
+완료된 작업:
 
 ```text
-S1-01 — Hull Movement V0
+S1-01 — Hull Movement V0 — PASS / USER CONFIRMED
 ```
 
 초기 S1 검증 범위:
@@ -124,7 +124,7 @@ P2 Mouse는 S0에서 기술적으로 검증됐지만 실제 포탑 조작 연결
 * Physical Cartridge
 * Custom Controller
 
-이번 상태 전환은 문서만 갱신하며 S1-01 구현은 시작하지 않습니다.
+S1-01 범위를 넘어서는 위 기능은 구현하지 않았으며, 별도 작업 지시 전에는 S1-02로 진행하지 않습니다.
 
 ---
 
@@ -168,7 +168,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S1 — DRIVE — ACTIVE / NOT YET IMPLEMENTED
+## S1 — DRIVE — ACTIVE / S1-01 PASS / USER CONFIRMED
 
 플레이어 전차의 차체 이동을 구현합니다.
 
@@ -626,6 +626,29 @@ Delta iOS는 추가 호환성 참고 환경입니다. 동일 S0 ROM 계열의 RO
 
 S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 이 시점의 ROM/build/input 구현과 위 SHA-256은 `KNOWN GOOD S0 BASELINE`이며, S1 작업 중 Boot/Input 회귀가 발생하면 이 상태와 비교합니다. 정상 동작하는 S0 build/input 구조는 S1 구현을 이유로 불필요하게 재작성하지 않습니다.
 
+## S1-01 Hull Movement V0
+
+2026-08-23에 P1 `padsCurrent(0)` D-pad를 desired heading으로 변환하고, 제한 선회·가속·관성·감속으로 단일 hull placeholder를 움직이는 S1-01을 구현했습니다. 위치와 속도는 Q8.8 fixed-point, heading은 clockwise-positive `u8` 0~255를 사용합니다. 현재 tuning 값은 `MAX_SPEED=0x0180`, `ACCELERATION=0x0008`, `DECELERATION=0x0006`, `TURN_RATE=2`이며 확정 밸런스가 아닙니다.
+
+8방향 heading은 `RIGHT=0`, `DOWN-RIGHT=32`, `DOWN=64`, `DOWN-LEFT=96`, `LEFT=128`, `UP-LEFT=160`, `UP=192`, `UP-RIGHT=224`입니다. 위치는 desired vector가 아니라 현재 hull heading의 integer sin/cos lookup 결과와 scalar speed로 갱신합니다. 입력을 놓으면 추가 steering을 멈추고 현재 방향으로 감속하며, 별도 reverse나 strafe는 없습니다.
+
+화면에는 녹색 16x16 OBJ hull과 현재 heading 앞쪽의 노란 8x8 marker를 표시합니다. hull 중심은 진단 HUD 아래의 `X=16..239`, `Y=80..207` 범위로 clamp됩니다. compact 상태줄에는 P1 raw, throttle, position, current/target heading, speed와 P2 connection/raw X/raw Y/button mask를 표시합니다. P2 Mouse는 gameplay에 사용하지 않고 S0 regression 진단으로만 polling합니다.
+
+clean build를 두 번 실행했고 두 번 모두 compiler warning/error 없이 `ROM_VERIFY=PASS`였으며 SHA-256이 일치했습니다.
+
+```text
+e881273477ff705b09eff27d064dd633115cf8a9f14b80bcac1498f8cbadef67
+```
+
+MesenCE 2.2.1과 지정된 bsnes nightly에서 동일 ROM의 S1-01 화면, hull과 heading marker 부팅을 확인했습니다. MesenCE 화면에서는 P2 connection indicator `C1`도 확인했습니다.
+
+```text
+S1-01 PASS
+USER CONFIRMED 2026-08-23
+```
+
+사용자가 MesenCE에서 `D` 유지 직선 가속, 해제 후 관성 감속, `D` 이동 중 `W` 90도 곡선, `D` 이동 중 `A` U-turn, `W+D` 대각 target, 선회 중 해제 시 추가 steering 정지, P1 이동 중 P2 Mouse raw/버튼 동시 갱신이 모두 정상임을 확인했습니다. D-pad 방향키 이외의 P1 버튼 raw 입력도 계속 동작하는 것을 확인했습니다. 이는 host mapping을 통한 사용자 테스트 결과이며 ROM은 PC keyboard를 직접 읽지 않습니다.
+
 ---
 
 # AI-Assisted Development
@@ -761,10 +784,10 @@ COMPLETED GATE
 S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
 
 CURRENT STATUS
-ACTIVE / NOT YET IMPLEMENTED
+S1-01 — PASS / USER CONFIRMED 2026-08-23
 
-NEXT IMPLEMENTATION TASK
-S1-01 — Hull Movement V0
+CURRENT SUBTASK
+S1-01 — Hull Movement V0 — COMPLETE / STOP
 
-S1-01 implementation has not started.
+Do not proceed to S1-02 without a separate task instruction.
 ```

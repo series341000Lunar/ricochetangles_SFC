@@ -257,10 +257,10 @@ CURRENT GATE
 S1 — DRIVE
 
 CURRENT STATUS
-ACTIVE / NOT YET IMPLEMENTED
+S1-01 — PASS / USER CONFIRMED 2026-08-23
 
-NEXT IMPLEMENTATION TASK
-S1-01 — Hull Movement V0
+CURRENT SUBTASK
+S1-01 — Hull Movement V0 — COMPLETE / STOP
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -702,7 +702,7 @@ S1에서는 P1 Pad만 차체 이동에 연결한다. P2 Mouse의 실제 포탑 �
 
 # 16. Current S1 Direction — Active Gate Contract
 
-S1은 현재 `ACTIVE / NOT YET IMPLEMENTED` 상태다. 다음 구현 작업은 `S1-01 — Hull Movement V0`이며 별도 작업 지시 전에는 구현하지 않는다.
+S1은 현재 `ACTIVE` 상태다. `S1-01 — Hull Movement V0`는 구현, 자동/Emulator boot 검증과 사용자 체감 검증을 마쳐 2026-08-23 `PASS / USER CONFIRMED`됐다. 별도 작업 지시 전에는 S1-02로 진행하지 않는다.
 
 S1의 초기 연구 범위는 다음과 같다.
 
@@ -1463,9 +1463,9 @@ Agent / Codex가 가능한 한 담당할 영역:
 
 10. GO — USER APPROVED 2026-08-23
 
-11. S1 — DRIVE — ACTIVE / NOT YET IMPLEMENTED
+11. S1 — DRIVE — ACTIVE
 
-12. S1-01 — Hull Movement V0 — NEXT IMPLEMENTATION TASK
+12. S1-01 — Hull Movement V0 — PASS / USER CONFIRMED 2026-08-23
 ```
 
 S0는 MesenCE 2.2.1과 bsnes nightly의 사용자 확인, Delta iOS 추가 호환성 확인, 결정적 clean build와 ROM sanity를 근거로 `PASS / CLOSED`되었다.
@@ -1607,11 +1607,11 @@ COMPLETED GATE:
 S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
 
 CURRENT STATUS:
-ACTIVE / NOT YET IMPLEMENTED
+S1-01 — PASS / USER CONFIRMED 2026-08-23
 
-NEXT IMPLEMENTATION TASK:
-S1-01 — Hull Movement V0
+CURRENT SUBTASK:
+S1-01 — Hull Movement V0 — COMPLETE / STOP
 
-DO NOT IMPLEMENT S1-01
+DO NOT PROCEED TO S1-02
 WITHOUT A SEPARATE TASK INSTRUCTION.
 ```

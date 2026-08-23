@@ -2,7 +2,7 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S1 — DRIVE / S1-02R IMPLEMENTED / USER PLAYTEST REQUIRED`
+> **현재 상태:** `S1 — DRIVE / S1-02R PASS / USER CONFIRMED 2026-08-23`
 > **완료 Gate:** `S0 — BOOT & INPUT / PASS / CLOSED / USER GO APPROVED`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
@@ -85,12 +85,12 @@ C / 65816 / SNES Hardware
 
 ## S1 — DRIVE
 
-S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE입니다. S1-01, S1-01R, S1-02는 2026-08-23 각각 `PASS / USER CONFIRMED`됐고, 현재 S1-02R은 `IMPLEMENTED / USER PLAYTEST REQUIRED` 상태입니다.
+S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE입니다. S1-01, S1-01R, S1-02와 S1-02R은 2026-08-23 각각 `PASS / USER CONFIRMED`됐습니다.
 
 현재 작업:
 
 ```text
-S1-02R — Hull Scale & Readability Revision — USER PLAYTEST REQUIRED
+S1-02R — Hull Scale & Readability Revision — COMPLETE / USER CONFIRMED
 ```
 
 초기 S1 검증 범위:
@@ -124,7 +124,7 @@ P2 Mouse는 S0에서 기술적으로 검증됐지만 실제 포탑 조작 연결
 * Physical Cartridge
 * Custom Controller
 
-S1-02R 범위를 넘어서는 위 기능은 구현하지 않았으며, 사용자 확인과 별도 작업 지시 전에는 S1-03/S2로 진행하지 않습니다.
+S1-02R 범위를 넘어서는 위 기능은 구현하지 않았으며, 별도 작업 지시 전에는 S1-03/S2로 진행하지 않습니다.
 
 ---
 
@@ -168,7 +168,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S1 — DRIVE — ACTIVE / S1-02R USER PLAYTEST REQUIRED
+## S1 — DRIVE — ACTIVE / S1-02R PASS
 
 플레이어 전차의 차체 이동을 구현합니다.
 
@@ -712,11 +712,11 @@ Diagnostic은 최상단 `THR/TURN`, 그 아래 `HDG/FRM/SPD`, `P1/POS`, compact 
 100459bcd547174be004dfe5b2fe67db4c374bbaa08d6956b8229baca10f5a4a
 ```
 
-MesenCE 2.2.1과 지정된 bsnes nightly에서 동일 ROM의 중앙 시작 위치, 32×32 Hull/front marker, 버튼형 HUD, compact P1/P2 diagnostic 부팅을 확인했습니다. 실제 눌림 강조, conflict, 전진/후진/제자리 회전/복합 선회와 P2 동시 입력 체감은 사용자 확인 전이므로 현재 상태는 다음과 같습니다.
+MesenCE 2.2.1과 지정된 bsnes nightly에서 동일 ROM의 중앙 시작 위치, 32×32 Hull/front marker, 버튼형 HUD, compact P1/P2 diagnostic 부팅을 확인했습니다. 사용자는 수정 ROM에서 좌우 선회 시 32×32 Hull sprite가 더 이상 쪼개지지 않고 정상 표시되는 것을 확인했습니다. 현재 상태는 다음과 같습니다.
 
 ```text
-S1-02R IMPLEMENTED
-USER PLAYTEST REQUIRED
+S1-02R PASS
+USER CONFIRMED 2026-08-23
 ```
 
 ---
@@ -854,10 +854,10 @@ COMPLETED GATE
 S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
 
 CURRENT STATUS
-S1-02R — IMPLEMENTED / USER PLAYTEST REQUIRED
+S1-02R — PASS / USER CONFIRMED 2026-08-23
 
 CURRENT SUBTASK
-S1-02R — Hull Scale & Readability Revision — USER PLAYTEST REQUIRED
+S1-02R — Hull Scale & Readability Revision — COMPLETE / STOP
 
-Do not close S1 or proceed to S1-03/S2 without user playtest and a separate task instruction.
+Do not close S1 or proceed to S1-03/S2 without a separate task instruction.
 ```

@@ -53,6 +53,174 @@ SOURCE
 → P2 SNES MOUSE INPUT
 ```
 
+Local Development Environment Contract
+
+본 저장소의 주 개발 환경은 사용자의 Windows 개인 PC다.
+
+현재 SFC Experimental은 이 환경을 Primary Development Machine으로 취급한다.
+
+초기 S0 단계에서는 불필요한 환경 추상화보다 실제 주 개발기의 재현성과 안정성을 우선하므로 아래 경로를 하드코딩해 사용해도 된다.
+
+Primary Windows User
+Windows user:
+LunarGagarin
+
+사용자의 개인 Windows PC는 가능한 한 동일한 사용자 이름을 사용한다.
+
+따라서 사용자 홈 경로가 필요한 경우 기본값은 다음으로 간주할 수 있다.
+
+C:\Users\LunarGagarin
+
+단 Git Repository 자체의 위치는 절대경로로 하드코딩하지 않는다.
+
+Repository Root가 필요하면 현재 Git Working Tree에서 동적으로 확인한다.
+
+예:
+
+git rev-parse --show-toplevel
+MSYS2
+
+현재 설치된 MSYS2의 authoritative path:
+
+C:\msys64
+
+기본 개발 subsystem:
+
+UCRT64
+
+MSYS2 launcher:
+
+C:\msys64\msys2_shell.cmd
+
+관련 실행파일과 환경을 찾을 때 다른 MSYS2 설치본을 먼저 탐색하지 않는다.
+
+S0 작업에서는 위 설치를 기본 환경으로 사용한다.
+
+위 경로가 존재하지 않거나 필요한 package가 없는 경우 임의로 다른 MSYS2/Cygwin/WSL 환경으로 우회하지 말고 현재 환경 상태와 필요한 package를 보고한다.
+
+특히 다음 환경으로 자동 전환하지 않는다.
+
+WSL
+Cygwin
+별도 Portable MSYS2
+Git Bash 기반 대체 Toolchain
+
+실제 필요성이 확인되고 사용자가 승인한 경우에만 개발환경 변경을 검토한다.
+
+MesenCE
+
+현재 주 SNES/SFC 개발 Emulator는 Mesen Community Edition이다.
+
+설치 디렉터리:
+
+C:\Users\LunarGagarin\Documents\MesenCE
+
+실행파일:
+
+C:\Users\LunarGagarin\Documents\MesenCE\Mesen.exe
+
+S0에서 Emulator 실행 자동화가 필요한 경우 이 경로를 authoritative executable path로 사용한다.
+
+예상 실행 대상:
+
+C:\Users\LunarGagarin\Documents\MesenCE\Mesen.exe <ROM_PATH>
+
+정확한 CLI argument 동작은 실제 S0-01에서 검증한 뒤 Build/Run script에 고정한다.
+
+검증되지 않은 argument를 추측하여 계약으로 만들지 않는다.
+
+MesenCE가 정상적으로 존재하는 한 다른 Emulator를 주 Emulator로 자동 변경하지 않는다.
+
+Secondary Emulator
+
+두 번째 Emulator는 ROM 부팅 교차검증용이다.
+
+현재 Secondary Emulator의 설치 경로는 아직 고정되지 않았다.
+
+따라서 S0-01에서 Secondary Emulator 설치를 필수 전제조건으로 만들지 않는다.
+
+우선 MesenCE에서 실제 ROM 생성과 Boot를 성공시킨다.
+
+교차검증 Emulator는 이후 S0 Gate를 닫기 전에 추가할 수 있다.
+
+PVSnesLib / SFC Toolchain
+
+현재 PVSnesLib의 실제 설치 경로는 아직 확정되지 않았다.
+
+따라서 다음 값을 아직 임의로 확정하지 않는다.
+
+PVSNESLIB_HOME
+
+S0-01 Toolchain Bootstrap에서:
+
+사용할 PVSnesLib 버전을 실제로 결정한다.
+Windows/MSYS2에서 설치한다.
+실제 Build 성공을 확인한다.
+성공한 설치 경로를 고정한다.
+이 섹션과 README.md에 실제 값을 기록한다.
+
+Toolchain 설치 위치를 매 Build마다 자동 검색하는 구조는 만들지 않는다.
+
+한 번 S0에서 검증된 위치와 버전이 결정되면 그것을 본 프로젝트의 canonical development toolchain으로 사용한다.
+
+Environment Modification Rule
+
+Agent는 필요한 개발 도구가 없다고 판단될 경우 바로 임의 설치하지 말고 먼저 다음을 확인한다.
+
+1. 이미 지정된 경로에 존재하는가?
+2. 현재 설치된 버전은 무엇인가?
+3. S0 목표에 실제로 필요한가?
+4. 기존 환경을 변경하지 않고 사용할 수 있는가?
+
+설치 또는 package 추가가 필요한 경우 변경 내용을 명확히 보고한다.
+
+특히 기존 시스템 환경을 불필요하게 전역 변경하지 않는다.
+
+가능하면 프로젝트별 Script와 명시적인 환경변수 설정을 사용한다.
+
+Current Known Environment
+
+현재 확인된 개발환경:
+
+HOST
+Windows PC
+
+USER
+LunarGagarin
+
+REPOSITORY
+series341000Lunar/ricochetangles_SFC
+Repository location = resolve from current Git working tree
+
+MSYS2
+C:\msys64
+
+MSYS2 SUBSYSTEM
+UCRT64
+
+PRIMARY EMULATOR
+MesenCE
+
+MESEN DIRECTORY
+C:\Users\LunarGagarin\Documents\MesenCE
+
+MESEN EXECUTABLE
+C:\Users\LunarGagarin\Documents\MesenCE\Mesen.exe
+
+PVSNESLIB
+Not installed / path not yet contracted
+
+CURRENT GATE
+S0 — BOOT & INPUT
+
+CURRENT SUBTASK
+S0-01 — Toolchain Bootstrap & Hello ROM
+
+이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
+
+먼저 차이를 보고하고 이 계약을 갱신한다.
+
+
 ---
 
 # 2. Project Relationship

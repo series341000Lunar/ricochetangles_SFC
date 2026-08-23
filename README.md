@@ -2,7 +2,7 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S1 — DRIVE / S1-01 PASS / USER CONFIRMED`
+> **현재 상태:** `S1 — DRIVE / S1-01R PASS / USER CONFIRMED`
 > **완료 Gate:** `S0 — BOOT & INPUT / PASS / CLOSED / USER GO APPROVED`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
@@ -85,12 +85,12 @@ C / 65816 / SNES Hardware
 
 ## S1 — DRIVE
 
-S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE이며 S1-01은 2026-08-23 `PASS / USER CONFIRMED`됐습니다.
+S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE입니다. S1-01과 S1-01R은 2026-08-23 각각 `PASS / USER CONFIRMED`됐습니다.
 
 완료된 작업:
 
 ```text
-S1-01 — Hull Movement V0 — PASS / USER CONFIRMED
+S1-01R — Tank Control Revision — PASS / USER CONFIRMED
 ```
 
 초기 S1 검증 범위:
@@ -168,7 +168,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S1 — DRIVE — ACTIVE / S1-01 PASS / USER CONFIRMED
+## S1 — DRIVE — ACTIVE / S1-01R PASS / USER CONFIRMED
 
 플레이어 전차의 차체 이동을 구현합니다.
 
@@ -649,6 +649,32 @@ USER CONFIRMED 2026-08-23
 
 사용자가 MesenCE에서 `D` 유지 직선 가속, 해제 후 관성 감속, `D` 이동 중 `W` 90도 곡선, `D` 이동 중 `A` U-turn, `W+D` 대각 target, 선회 중 해제 시 추가 steering 정지, P1 이동 중 P2 Mouse raw/버튼 동시 갱신이 모두 정상임을 확인했습니다. D-pad 방향키 이외의 P1 버튼 raw 입력도 계속 동작하는 것을 확인했습니다. 이는 host mapping을 통한 사용자 테스트 결과이며 ROM은 PC keyboard를 직접 읽지 않습니다.
 
+## S1-01R Tank Control Revision
+
+S1-01의 Q8.8 position, integer sin/cos lookup, heading 기반 이동, 관성, boundary, OBJ placeholder와 P1/P2 polling을 유지하면서 D-pad 입력 모델만 전차식 조작으로 수정했습니다.
+
+```text
+UP    = forward throttle
+DOWN  = reverse throttle
+LEFT  = heading counter-clockwise
+RIGHT = heading clockwise
+```
+
+Speed는 signed Q8.8이며 `MAX_FORWARD_SPEED=0x0180`, `MAX_REVERSE_SPEED=0x00C0`, `FORWARD_ACCELERATION=0x0008`, `REVERSE_ACCELERATION=0x0008`, `COAST_DECELERATION=0x0006`, `TURN_RATE=2`를 사용합니다. 전진과 후진 전환은 반드시 speed 0을 거치며, throttle이 없거나 UP+DOWN conflict일 때는 coast deceleration으로 0에 접근합니다. LEFT+RIGHT는 neutral turn이고 speed 0에서도 pivot turn이 가능합니다. 후진 중에도 marker는 실제 이동 방향이 아니라 hull front를 계속 표시합니다.
+
+두 번의 clean build가 compiler warning/error 없이 `ROM_VERIFY=PASS`였고 동일 SHA-256을 생성했습니다.
+
+```text
+8f7c0685e2e1b5e3526c26701620df5a11b4fa70675f6663d2fe06c34ba46f4b
+```
+
+MesenCE 2.2.1과 지정된 bsnes nightly에서 동일 ROM의 `S1-01R TANK CONTROL` 화면, signed speed diagnostic, hull과 heading marker 부팅을 확인했습니다. P2 connection/raw/button/sensitivity polling도 compact diagnostic에 유지됩니다. 사용자가 MesenCE에서 전차식 전진·후진·회전 조작감이 만족스럽고 기존 Mouse 입력도 계속 동작한다고 확인했습니다.
+
+```text
+S1-01R PASS
+USER CONFIRMED 2026-08-23
+```
+
 ---
 
 # AI-Assisted Development
@@ -784,10 +810,10 @@ COMPLETED GATE
 S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
 
 CURRENT STATUS
-S1-01 — PASS / USER CONFIRMED 2026-08-23
+S1-01R — PASS / USER CONFIRMED 2026-08-23
 
 CURRENT SUBTASK
-S1-01 — Hull Movement V0 — COMPLETE / STOP
+S1-01R — Tank Control Revision — COMPLETE / STOP
 
 Do not proceed to S1-02 without a separate task instruction.
 ```

@@ -2,9 +2,11 @@
 
 #define FIXED_SHIFT 8
 
-#define MAX_SPEED 0x0180
-#define ACCELERATION 0x0008
-#define DECELERATION 0x0006
+#define MAX_FORWARD_SPEED 0x0180
+#define MAX_REVERSE_SPEED 0x00C0
+#define FORWARD_ACCELERATION 0x0008
+#define REVERSE_ACCELERATION 0x0008
+#define COAST_DECELERATION 0x0006
 #define TURN_RATE 2
 
 #define HULL_MIN_X 16
@@ -22,10 +24,10 @@ typedef struct
 {
     s32 positionX;
     s32 positionY;
-    u16 speed;
+    s16 speed;
     u8 heading;
-    u8 targetHeading;
-    u8 throttle;
+    s8 throttle;
+    s8 turn;
 } HullState;
 
 static const char hexDigits[] = "0123456789ABCDEF";
@@ -103,120 +105,119 @@ static s16 cos256(u8 angle)
     return sin256((u8)(angle + 64));
 }
 
-static u8 resolveDesiredHeading(u16 pad, u8 *desiredHeading)
+static void resolveHullInput(u16 pad, HullState *hull)
 {
-    s8 inputX = 0;
-    s8 inputY = 0;
+    u8 forwardHeld = (pad & KEY_UP) != 0;
+    u8 reverseHeld = (pad & KEY_DOWN) != 0;
+    u8 leftHeld = (pad & KEY_LEFT) != 0;
+    u8 rightHeld = (pad & KEY_RIGHT) != 0;
 
-    if ((pad & KEY_LEFT) != 0)
+    if (forwardHeld == reverseHeld)
     {
-        inputX--;
+        hull->throttle = 0;
     }
-    if ((pad & KEY_RIGHT) != 0)
+    else if (forwardHeld != 0)
     {
-        inputX++;
-    }
-    if ((pad & KEY_UP) != 0)
-    {
-        inputY--;
-    }
-    if ((pad & KEY_DOWN) != 0)
-    {
-        inputY++;
-    }
-
-    if (inputX == 0 && inputY == 0)
-    {
-        return 0;
-    }
-
-    if (inputY < 0)
-    {
-        if (inputX < 0)
-        {
-            *desiredHeading = 160;
-        }
-        else if (inputX > 0)
-        {
-            *desiredHeading = 224;
-        }
-        else
-        {
-            *desiredHeading = 192;
-        }
-    }
-    else if (inputY > 0)
-    {
-        if (inputX < 0)
-        {
-            *desiredHeading = 96;
-        }
-        else if (inputX > 0)
-        {
-            *desiredHeading = 32;
-        }
-        else
-        {
-            *desiredHeading = 64;
-        }
-    }
-    else if (inputX < 0)
-    {
-        *desiredHeading = 128;
+        hull->throttle = 1;
     }
     else
     {
-        *desiredHeading = 0;
+        hull->throttle = -1;
     }
 
-    return 1;
+    if (leftHeld == rightHeld)
+    {
+        hull->turn = 0;
+    }
+    else if (leftHeld != 0)
+    {
+        hull->turn = -1;
+    }
+    else
+    {
+        hull->turn = 1;
+    }
 }
 
 static void updateHullHeading(HullState *hull)
 {
-    s8 angularDelta;
-
-    if (hull->throttle == 0)
-    {
-        hull->targetHeading = hull->heading;
-        return;
-    }
-
-    angularDelta = (s8)(hull->targetHeading - hull->heading);
-    if (angularDelta > TURN_RATE)
-    {
-        hull->heading = (u8)(hull->heading + TURN_RATE);
-    }
-    else if (angularDelta < -TURN_RATE)
+    if (hull->turn < 0)
     {
         hull->heading = (u8)(hull->heading - TURN_RATE);
     }
-    else
+    else if (hull->turn > 0)
     {
-        hull->heading = hull->targetHeading;
+        hull->heading = (u8)(hull->heading + TURN_RATE);
     }
 }
 
 static void updateHullSpeed(HullState *hull)
 {
-    if (hull->throttle != 0)
+    if (hull->throttle > 0)
     {
-        if (hull->speed >= MAX_SPEED - ACCELERATION)
+        if (hull->speed < 0)
         {
-            hull->speed = MAX_SPEED;
+            if (hull->speed >= -FORWARD_ACCELERATION)
+            {
+                hull->speed = 0;
+            }
+            else
+            {
+                hull->speed += FORWARD_ACCELERATION;
+            }
+        }
+        else if (hull->speed >= MAX_FORWARD_SPEED - FORWARD_ACCELERATION)
+        {
+            hull->speed = MAX_FORWARD_SPEED;
         }
         else
         {
-            hull->speed += ACCELERATION;
+            hull->speed += FORWARD_ACCELERATION;
         }
     }
-    else if (hull->speed <= DECELERATION)
+    else if (hull->throttle < 0)
     {
-        hull->speed = 0;
+        if (hull->speed > 0)
+        {
+            if (hull->speed <= REVERSE_ACCELERATION)
+            {
+                hull->speed = 0;
+            }
+            else
+            {
+                hull->speed -= REVERSE_ACCELERATION;
+            }
+        }
+        else if (hull->speed <= -MAX_REVERSE_SPEED + REVERSE_ACCELERATION)
+        {
+            hull->speed = -MAX_REVERSE_SPEED;
+        }
+        else
+        {
+            hull->speed -= REVERSE_ACCELERATION;
+        }
     }
-    else
+    else if (hull->speed > 0)
     {
-        hull->speed -= DECELERATION;
+        if (hull->speed <= COAST_DECELERATION)
+        {
+            hull->speed = 0;
+        }
+        else
+        {
+            hull->speed -= COAST_DECELERATION;
+        }
+    }
+    else if (hull->speed < 0)
+    {
+        if (hull->speed >= -COAST_DECELERATION)
+        {
+            hull->speed = 0;
+        }
+        else
+        {
+            hull->speed += COAST_DECELERATION;
+        }
     }
 }
 
@@ -266,34 +267,47 @@ static void formatStatusLine(
     u16 pad,
     const HullState *hull,
     u8 mouseConnected,
-    u8 mouseRawX,
-    u8 mouseRawY,
-    u8 mouseButtons,
     char *output)
 {
+    u16 speedMagnitude;
+
     output[0] = 'P';
     formatHex16(pad, &output[1]);
     output[5] = 'T';
-    output[6] = hull->throttle != 0 ? '1' : '0';
-    output[7] = 'X';
-    formatHex8((u8)(hull->positionX >> FIXED_SHIFT), &output[8]);
-    output[10] = 'Y';
-    formatHex8((u8)(hull->positionY >> FIXED_SHIFT), &output[11]);
-    output[13] = 'H';
-    formatHex8(hull->heading, &output[14]);
-    output[16] = 'G';
-    formatHex8(hull->targetHeading, &output[17]);
-    output[19] = 'S';
-    formatHex8((u8)(hull->speed >> 4), &output[20]);
-    output[22] = 'C';
-    output[23] = mouseConnected != 0 ? '1' : '0';
-    output[24] = 'U';
-    formatHex8(mouseRawX, &output[25]);
-    output[27] = 'V';
-    formatHex8(mouseRawY, &output[28]);
-    output[30] = 'B';
-    output[31] = hexDigits[mouseButtons & 0x03];
-    output[32] = '\0';
+    output[6] = hull->throttle > 0 ? 'F' : (hull->throttle < 0 ? 'R' : 'N');
+    output[7] = 'R';
+    output[8] = hull->turn < 0 ? 'L' : (hull->turn > 0 ? 'R' : 'N');
+    output[9] = 'X';
+    formatHex8((u8)(hull->positionX >> FIXED_SHIFT), &output[10]);
+    output[12] = 'Y';
+    formatHex8((u8)(hull->positionY >> FIXED_SHIFT), &output[13]);
+    output[15] = 'H';
+    formatHex8(hull->heading, &output[16]);
+    output[18] = 'S';
+    output[19] = hull->speed < 0 ? '-' : '+';
+    speedMagnitude = hull->speed < 0 ? (u16)(-hull->speed) : (u16)hull->speed;
+    formatHex16(speedMagnitude, &output[20]);
+    output[24] = 'C';
+    output[25] = mouseConnected != 0 ? '1' : '0';
+    output[26] = '\0';
+}
+
+static void formatMouseStatusLine(
+    u8 mouseRawX,
+    u8 mouseRawY,
+    u8 mouseButtons,
+    u8 mouseSensitivityValue,
+    char *output)
+{
+    output[0] = 'U';
+    formatHex8(mouseRawX, &output[1]);
+    output[3] = 'V';
+    formatHex8(mouseRawY, &output[4]);
+    output[6] = 'B';
+    output[7] = hexDigits[mouseButtons & 0x03];
+    output[8] = 'M';
+    output[9] = hexDigits[mouseSensitivityValue & 0x0F];
+    output[10] = '\0';
 }
 
 static void initializeHullSprites(void)
@@ -318,21 +332,20 @@ int main(void)
 {
     HullState hull;
     u16 pad;
-    u8 desiredHeading;
     u8 mouseConnected;
     u8 mouseRawX;
     u8 mouseRawY;
     u8 mouseButtons;
     u8 mouseSensitivityValue;
-    u8 previousMouseSensitivity = 0;
-    char statusLine[33];
+    char statusLine[27];
+    char mouseStatusLine[11];
 
     hull.positionX = (s32)128 << FIXED_SHIFT;
     hull.positionY = (s32)144 << FIXED_SHIFT;
     hull.speed = 0;
     hull.heading = 0;
-    hull.targetHeading = 0;
     hull.throttle = 0;
+    hull.turn = 0;
 
     consoleInitDefaultText(0);
     bgSetGfxPtr(0, 0x3000);
@@ -344,11 +357,11 @@ int main(void)
     bgSetDisable(1);
     bgSetDisable(2);
 
-    consoleDrawText(4, 0, "S1-01 HULL MOVEMENT V0");
-    consoleDrawText(0, 2, "P T X Y H G S | C U V B");
-    consoleDrawText(0, 3, "P0000T0X80Y90H00G00S00C0U00V00B0");
-    consoleDrawText(0, 5, "X/Y PIX H/G HDG/TGT S Q4.4");
-    consoleDrawText(0, 6, "C/U/V/B P2 CONN/RAWX/RAWY/BTN");
+    consoleDrawText(6, 0, "S1-01R TANK CONTROL");
+    consoleDrawText(0, 2, "PRAW T R X  Y  H  SPEED C");
+    consoleDrawText(0, 3, "P0000TNRNX80Y90H00S+0000C0");
+    consoleDrawText(0, 5, "P2 RAW U/V  B BTN  M SENS");
+    consoleDrawText(0, 6, "U00V00B0M0");
 
     initMouse(MOUSE_SLOW);
     WaitForVBlank();
@@ -377,11 +390,7 @@ int main(void)
             mouseSensitivityValue = 0;
         }
 
-        hull.throttle = resolveDesiredHeading(pad, &desiredHeading);
-        if (hull.throttle != 0)
-        {
-            hull.targetHeading = desiredHeading;
-        }
+        resolveHullInput(pad, &hull);
 
         updateHullHeading(&hull);
         updateHullSpeed(&hull);
@@ -392,14 +401,17 @@ int main(void)
             pad,
             &hull,
             mouseConnected,
-            mouseRawX,
-            mouseRawY,
-            mouseButtons,
             statusLine);
         consoleDrawText(0, 3, "%s", statusLine);
 
-        previousMouseSensitivity = mouseSensitivityValue;
+        formatMouseStatusLine(
+            mouseRawX,
+            mouseRawY,
+            mouseButtons,
+            mouseSensitivityValue,
+            mouseStatusLine);
+        consoleDrawText(0, 6, "%s", mouseStatusLine);
     }
 
-    return previousMouseSensitivity;
+    return 0;
 }

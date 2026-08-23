@@ -2,7 +2,8 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S0 — BOOT & INPUT`
+> **현재 상태:** `S1 — DRIVE / ACTIVE / NOT YET IMPLEMENTED`
+> **완료 Gate:** `S0 — BOOT & INPUT / PASS / CLOSED / USER GO APPROVED`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
 > **Repository:** `series341000Lunar/ricochetangles_SFC`
@@ -82,54 +83,48 @@ C / 65816 / SNES Hardware
 
 # 현재 개발 단계
 
-## S0 — BOOT & INPUT
+## S1 — DRIVE
 
-현재 첫 번째 목표는 **게임을 만드는 것이 아니라 개발 환경이 실제로 성립하는지 검증하는 것**입니다.
+S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE이며 아직 구현을 시작하지 않은 `ACTIVE / NOT YET IMPLEMENTED` 상태입니다.
 
-현재 목표:
+다음 구현 작업:
 
 ```text
-SOURCE
-→ BUILD
-→ VALID .sfc ROM
-→ PC EMULATOR BOOT
-→ P1 PAD INPUT
-→ P2 SNES MOUSE INPUT
+S1-01 — Hull Movement V0
 ```
 
-### S0에서 확인할 것
+초기 S1 검증 범위:
 
-* SFC Toolchain 구축
-* 반복 가능한 `.sfc` ROM Build
-* 정상적인 ROM Boot
-* 최소 화면 출력
-* P1 Standard Controller 입력
-* P2 SNES Mouse 검출
-* Mouse 상대 이동값
-* Mouse Button 입력
-* 최소 ROM Validation
-* Build / Verify 자동화
+```text
+PLAYER HULL
+→ D-PAD INPUT
+→ DESIRED HEADING
+→ LIMITED TURN RATE
+→ THROTTLE
+→ ACCELERATION
+→ INERTIA
+→ DECELERATION
+→ POSITION UPDATE
+```
 
-### S0에서 하지 않는 것
+### S1에서 아직 하지 않는 것
 
-현재 단계에서는 다음을 만들지 않습니다.
+P2 Mouse는 S0에서 기술적으로 검증됐지만 실제 포탑 조작 연결은 후속 Gate에서 수행합니다. S1에서는 다음을 아직 구현하지 않습니다.
 
-* 전차 이동
-* 포탑
-* 주포
+* P2 Mouse gameplay
+* Turret control
+* Aim cursor
+* Fire
 * Projectile
-* 장갑 판정
-* 도탄
+* Armor / Ricochet
 * Enemy
 * Stage
 * Boss
-* 최종 Sprite
-* 음악
-* Flash Cartridge 대응
+* Final art / Audio
 * Physical Cartridge
-* 전용 Controller
+* Custom Controller
 
-먼저 **ROM을 안정적으로 띄울 수 있는지** 확인합니다.
+이번 상태 전환은 문서만 갱신하며 S1-01 구현은 시작하지 않습니다.
 
 ---
 
@@ -163,7 +158,7 @@ DROP
 
 ---
 
-## S0 — BOOT & INPUT
+## S0 — BOOT & INPUT — PASS / CLOSED
 
 PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 읽습니다.
 
@@ -173,7 +168,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S1 — DRIVE
+## S1 — DRIVE — ACTIVE / NOT YET IMPLEMENTED
 
 플레이어 전차의 차체 이동을 구현합니다.
 
@@ -601,14 +596,21 @@ MATCH: YES
 
 MesenCE 2.2.1에서 ROM boot, 화면 안정성, P1 12-button raw input, P1 복합입력, P2 Mouse 연결·방향·idle·좌우 button, P1+P2 동시 입력을 다시 확인했습니다. 최종 입력 회귀 결과는 사용자 확인을 포함해 `PASS / VERIFIED IN MESENCE / USER CONFIRMED`입니다.
 
-현재 Windows 개발 PC에서는 bsnes, ares, higan, Snes9x 또는 RetroArch 계열의 Secondary PC Emulator 설치를 확인하지 못했습니다.
+Secondary Emulator는 사용자 검증을 마친 bsnes nightly로 확정했습니다.
 
 ```text
-SECONDARY PC EMULATOR: NOT INSTALLED
-SECONDARY PC ROM/P1/P2: UNVERIFIED
+SECONDARY EMULATOR: bsnes nightly
+DIRECTORY: C:\Users\LunarGagarin\Documents\bsnes-windows\bsnes-nightly
+EXECUTABLE: C:\Users\LunarGagarin\Documents\bsnes-windows\bsnes-nightly\bsnes.exe
+ROM BOOT: PASS / USER CONFIRMED
+P1 PAD: PASS / USER CONFIRMED
+P2 SNES MOUSE: PASS / USER CONFIRMED
+P1 + P2 SIMULTANEOUS: PASS / USER CONFIRMED
 ```
 
-동일 S0 ROM 계열은 Delta iOS에서 ROM boot, 화면 출력과 virtual P1 SNES controller가 정상 작동하는 것을 사용자가 확인했습니다. 이는 `SUPPLEMENTARY CROSS-EMULATOR COMPATIBILITY / USER CONFIRMED`이며 실제 Super Famicom 검증은 아닙니다. Delta iOS의 P2 SNES Mouse는 검증하지 않았습니다.
+정확한 bsnes nightly build number 또는 build date는 확인되지 않아 기록하지 않습니다. MesenCE와 동일한 logical controller mapping으로 검증했습니다.
+
+Delta iOS는 추가 호환성 참고 환경입니다. 동일 S0 ROM 계열의 ROM boot, 화면 출력과 virtual P1 SNES controller는 `PASS / USER CONFIRMED`입니다. 이번 환경에서 SNES Mouse를 사용할 수 없었으므로 P2 Mouse는 `UNKNOWN`입니다. Delta iOS는 실제 Super Famicom 검증이 아닙니다.
 
 ## 현재 검증 경계
 
@@ -617,12 +619,12 @@ SECONDARY PC ROM/P1/P2: UNVERIFIED
 * `PASS`: P2 index 1의 SNES Mouse 검출, raw X/Y, signed DX/DY, sensitivity 및 좌/우 held button 입력
 * `PASS`: P1 Pad와 P2 Mouse의 이동 및 button 동시 입력
 * `PASS`: S0-04 MesenCE 최종 회귀 및 동일 SHA-256의 clean build 2회
+* `PASS / USER CONFIRMED`: bsnes nightly ROM boot, P1 Pad, P2 SNES Mouse 및 P1+P2 동시 입력
 * `PASS / USER CONFIRMED`: Delta iOS ROM boot, 화면 출력 및 virtual P1 controller 보조 교차 호환성
-* `UNVERIFIED`: Secondary PC Emulator — 설치되지 않음
-* `UNVERIFIED`: Delta iOS P2 SNES Mouse
+* `UNKNOWN`: Delta iOS P2 SNES Mouse — 현재 환경에서 사용할 수 없음
 * `UNVERIFIED`: 실제 Super Famicom 하드웨어
 
-S0 Final Acceptance Candidate는 사용자 검토 준비 상태입니다. S0 폐쇄와 `GO S1` 판정은 사용자가 결정하며, 그 전에는 S1을 시작하지 않습니다.
+S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 이 시점의 ROM/build/input 구현과 위 SHA-256은 `KNOWN GOOD S0 BASELINE`이며, S1 작업 중 Boot/Input 회귀가 발생하면 이 상태와 비교합니다. 정상 동작하는 S0 build/input 구조는 S1 구현을 이유로 불필요하게 재작성하지 않습니다.
 
 ---
 
@@ -709,7 +711,7 @@ AMMO
 
 현재 가장 중요한 목표는 단순합니다.
 
-> **먼저 실제 SFC ROM을 띄웁니다.**
+> **SFC에서 RicochetAngles다운 차체 이동이 성립하는지 확인합니다.**
 
 ---
 
@@ -749,14 +751,20 @@ STATUS
 EXPERIMENTAL / DROP-OK
 
 CURRENT GATE
-S0 — BOOT & INPUT
-
-CURRENT OBJECTIVE
-Build and boot a valid SFC ROM,
-then verify P1 Pad and P2 SNES Mouse input.
-
-NEXT
 S1 — DRIVE
 
-S1 starts only after S0 verification and GO decision.
+CURRENT OBJECTIVE
+Validate hull movement with limited turning,
+acceleration, inertia and deceleration.
+
+COMPLETED GATE
+S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
+
+CURRENT STATUS
+ACTIVE / NOT YET IMPLEMENTED
+
+NEXT IMPLEMENTATION TASK
+S1-01 — Hull Movement V0
+
+S1-01 implementation has not started.
 ```

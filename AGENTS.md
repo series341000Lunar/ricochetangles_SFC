@@ -37,20 +37,21 @@ RicochetAngles
 현재 개발 상태:
 
 ```text
-S0 — BOOT & INPUT
+S1 — DRIVE
 ```
 
 현재 목표는 게임 전체 구현이 아니다.
 
-첫 번째 목표는 다음이다.
+S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. 현재 목표는 다음 S1 이동 검증이다.
 
 ```text
-SOURCE
-→ BUILD
-→ VALID .sfc ROM
-→ PC EMULATOR BOOT
-→ P1 PAD INPUT
-→ P2 SNES MOUSE INPUT
+PLAYER HULL
+→ D-PAD INPUT
+→ DESIRED HEADING
+→ LIMITED TURN RATE
+→ THROTTLE / ACCELERATION / INERTIA
+→ DECELERATION
+→ POSITION UPDATE
 ```
 
 Local Development Environment Contract
@@ -94,7 +95,7 @@ C:\msys64\msys2_shell.cmd
 
 관련 실행파일과 환경을 찾을 때 다른 MSYS2 설치본을 먼저 탐색하지 않는다.
 
-S0 작업에서는 위 설치를 기본 환경으로 사용한다.
+S0에서 검증한 위 설치를 현재 S1에서도 기본 환경으로 사용한다.
 
 위 경로가 존재하지 않거나 필요한 package가 없는 경우 임의로 다른 MSYS2/Cygwin/WSL 환경으로 우회하지 말고 현재 환경 상태와 필요한 package를 보고한다.
 
@@ -133,15 +134,21 @@ MesenCE가 정상적으로 존재하는 한 다른 Emulator를 주 Emulator로 �
 
 Secondary Emulator
 
-두 번째 Emulator는 ROM 부팅 교차검증용이다.
+현재 Secondary SNES/SFC Emulator는 bsnes nightly다.
 
-현재 Secondary Emulator의 설치 경로는 아직 고정되지 않았다.
+설치 디렉터리:
 
-따라서 S0-01에서 Secondary Emulator 설치를 필수 전제조건으로 만들지 않는다.
+C:\Users\LunarGagarin\Documents\bsnes-windows\bsnes-nightly
 
-우선 MesenCE에서 실제 ROM 생성과 Boot를 성공시킨다.
+실행파일:
 
-교차검증 Emulator는 이후 S0 Gate를 닫기 전에 추가할 수 있다.
+C:\Users\LunarGagarin\Documents\bsnes-windows\bsnes-nightly\bsnes.exe
+
+S0-04에서 동일 ROM의 Boot, P1 Pad, P2 SNES Mouse와 P1+P2 동시 입력을 사용자 확인했다. 정확한 nightly build number 또는 build date는 확인되지 않았으므로 추측하여 계약에 넣지 않는다.
+
+Additional Compatibility Reference
+
+Delta iOS는 추가 호환성 참고 환경이다. S0 ROM boot, 화면과 virtual P1 Pad는 `PASS / USER CONFIRMED`이며 P2 Mouse는 현재 환경에서 사용할 수 없어 `UNKNOWN`이다. Delta iOS는 실제 Super Famicom 검증이 아니다.
 
 PVSnesLib / SFC Toolchain
 
@@ -222,6 +229,18 @@ C:\Users\LunarGagarin\Documents\MesenCE
 MESEN EXECUTABLE
 C:\Users\LunarGagarin\Documents\MesenCE\Mesen.exe
 
+SECONDARY EMULATOR
+bsnes nightly
+
+BSNES DIRECTORY
+C:\Users\LunarGagarin\Documents\bsnes-windows\bsnes-nightly
+
+BSNES EXECUTABLE
+C:\Users\LunarGagarin\Documents\bsnes-windows\bsnes-nightly\bsnes.exe
+
+ADDITIONAL COMPATIBILITY REFERENCE
+Delta iOS
+
 PVSNESLIB
 Version 4.6.0
 
@@ -231,14 +250,17 @@ C:\snesdev\pvsneslib-4.6.0
 PVSNESLIB HOME IN MSYS2
 /c/snesdev/pvsneslib-4.6.0
 
+COMPLETED GATE
+S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED 2026-08-23
+
 CURRENT GATE
-S0 — BOOT & INPUT
+S1 — DRIVE
 
-CURRENT SUBTASK
-S0-04 — Final Regression & Cross-Emulator Validation — VERIFIED 2026-08-23
+CURRENT STATUS
+ACTIVE / NOT YET IMPLEMENTED
 
-NEXT SUBTASK
-S0 FINAL USER REVIEW — USER DECISION REQUIRED
+NEXT IMPLEMENTATION TASK
+S1-01 — Hull Movement V0
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -401,9 +423,9 @@ SFC 하드웨어에 적합한 구조로 다시 구현한다.
 
 ---
 
-# 7. Current Phase — S0 BOOT & INPUT
+# 7. Completed Phase — S0 BOOT & INPUT
 
-현재 Agent가 집중해야 할 범위는 **S0뿐**이다.
+S0는 2026-08-23에 모든 최종 검증을 통과하고 사용자 GO 결정으로 `PASS / CLOSED`되었다.
 
 ## S0 목적
 
@@ -411,7 +433,7 @@ SFC 하드웨어에 적합한 구조로 다시 구현한다.
 
 > 이 저장소에서 실제 Super Famicom ROM을 안정적으로 반복 생성하고 입력을 읽을 수 있는가?
 
-S0에서는 게임성을 평가하지 않는다.
+S0에서는 게임성을 평가하지 않았다. 검증된 ROM build/input 구조는 이후 회귀검사의 `KNOWN GOOD S0 BASELINE`이다.
 
 ---
 
@@ -529,11 +551,19 @@ DROP
 
 Agent가 독자적으로 다음 Gate로 넘어가지 않는다.
 
+S0 최종 결과:
+
+```text
+STATUS: PASS / CLOSED
+USER DECISION: GO
+DATE: 2026-08-23
+```
+
 ---
 
 # 11. Initial Toolchain Direction
 
-현재 S0의 기본 기술 방향은 다음 계열을 우선한다.
+S0에서 확정한 기본 기술 방향은 현재 S1에서도 유지한다.
 
 ```text
 C 중심 개발
@@ -662,28 +692,30 @@ P2 SNES Mouse
 → Turret
 ```
 
-S0에서는 이 입력을 게임 동작에 연결하지 않는다.
+S0에서는 이 입력을 게임 동작에 연결하지 않았다.
 
 S0의 목적은 raw input 검증이다.
 
-S1 이후에만 실제 조작으로 연결한다.
+S1에서는 P1 Pad만 차체 이동에 연결한다. P2 Mouse의 실제 포탑 조작 연결은 후속 Gate 전까지 시작하지 않는다.
 
 ---
 
-# 16. Future S1 Direction — Reference Only
+# 16. Current S1 Direction — Active Gate Contract
 
-S0가 공식적으로 완료된 뒤에만 S1을 시작한다.
+S1은 현재 `ACTIVE / NOT YET IMPLEMENTED` 상태다. 다음 구현 작업은 `S1-01 — Hull Movement V0`이며 별도 작업 지시 전에는 구현하지 않는다.
 
-S1의 예상 연구 대상은 다음과 같다.
+S1의 초기 연구 범위는 다음과 같다.
 
 ```text
-Player Tank
-→ Hull Movement
-→ Acceleration
-→ Deceleration
-→ Inertia
-→ Limited Turning Rate
-→ Hull Heading
+PLAYER HULL
+→ D-PAD INPUT
+→ DESIRED HEADING
+→ LIMITED TURN RATE
+→ THROTTLE
+→ ACCELERATION
+→ INERTIA
+→ DECELERATION
+→ POSITION UPDATE
 ```
 
 그래픽은 placeholder를 허용한다.
@@ -694,7 +726,7 @@ S1의 핵심 질문은:
 
 이다.
 
-이 내용은 현재 작업 지시가 아니다.
+S1에서도 P2 Mouse gameplay, Turret, Aim Cursor, Fire, Projectile, Armor, Ricochet, Enemy, Stage, Boss, final art와 audio는 범위 밖이다.
 
 ---
 
@@ -900,7 +932,7 @@ one command
 * Build manifest
 * Deterministic output check
 
-현재 S0에서는 필요한 최소 검증만 구현한다.
+S0에서는 필요한 최소 검증만 구현했다. S1에서도 현재 Gate에 필요한 검증만 추가한다.
 
 전체 미래 검증 체계를 선제적으로 만들지 않는다.
 
@@ -1116,7 +1148,7 @@ HTML canonical Map/Data
 
 를 검토한다.
 
-현재 S0에서는 Map 작업을 하지 않는다.
+현재 S1에서도 Map 작업을 하지 않는다.
 
 ---
 
@@ -1134,7 +1166,7 @@ C — Immobilized Last Stand
 
 SFC에서도 세 Phase가 서로 다른 문제를 요구한다는 의미를 우선 보존한다.
 
-세부 Boss 규칙을 현재 S0 코드에 미리 넣지 않는다.
+세부 Boss 규칙을 현재 S1 코드에 미리 넣지 않는다.
 
 BOSS_01 Combat Contract를 `AGENTS.md`에 복제하지 않는다.
 
@@ -1186,7 +1218,7 @@ PC Emulator
 
 Standalone Physical Cartridge 제작은 Stage가 실제 하드웨어에서 완주 가능한 수준에 도달한 이후에만 검토한다.
 
-현재 S0에서는 PCB, Flash ROM, EPROM, Shell을 설계하지 않는다.
+현재 S1에서는 PCB, Flash ROM, EPROM, Shell을 설계하지 않는다.
 
 ---
 
@@ -1429,28 +1461,41 @@ Agent / Codex가 가능한 한 담당할 영역:
 
 9. S0 final regression / cross-emulator review — VERIFIED 2026-08-23
 
-10. GO / REVISE / DROP — USER DECISION REQUIRED
+10. GO — USER APPROVED 2026-08-23
+
+11. S1 — DRIVE — ACTIVE / NOT YET IMPLEMENTED
+
+12. S1-01 — Hull Movement V0 — NEXT IMPLEMENTATION TASK
 ```
 
-현재 S0-04에서 MesenCE 최종 입력 회귀, 결정적 clean build, ROM sanity와 Delta iOS 보조 교차 호환성까지 검증했다.
+S0는 MesenCE 2.2.1과 bsnes nightly의 사용자 확인, Delta iOS 추가 호환성 확인, 결정적 clean build와 ROM sanity를 근거로 `PASS / CLOSED`되었다.
 
-Secondary PC Emulator는 설치되어 있지 않아 `UNVERIFIED`이며 실제 Super Famicom도 `UNVERIFIED`다. S0 Final Acceptance Candidate는 사용자 검토 준비 상태지만 Agent가 S0를 닫거나 S1을 시작하지 않는다.
+S0 종료 시점의 ROM/build/input 구현은 `KNOWN GOOD S0 BASELINE`이다. S1 작업 중 Boot 또는 Input 회귀가 발생하면 이 상태와 비교하며, S1 구현을 이유로 정상 동작하는 S0 build/input 구조를 불필요하게 재작성하지 않는다.
+
+실제 Super Famicom은 계속 `UNVERIFIED`이며 향후 Real Hardware Gate에서 별도로 검증한다.
 
 ---
 
 # 45. Explicitly Forbidden Premature Work
 
-현재 S0가 닫히기 전에 다음 작업을 선행하지 않는다.
+현재 S1 범위에서는 다음 작업을 선행하지 않는다.
 
 ```text
+NO P2 MOUSE GAMEPLAY
+NO TURRET CONTROL
+NO AIM CURSOR
+NO FIRE
+NO PROJECTILE
+NO ARMOR
+NO RICOCHET
+NO ENEMY
+NO MAP
+NO STAGE
+NO BOSS
 NO FINAL ART
-NO 14W STAGE
-NO BOSS IMPLEMENTATION
-NO ARMOR SYSTEM
-NO BULLET MODE
+NO AUDIO
 NO PHYSICAL CART
 NO CUSTOM CONTROLLER
-NO MUSIC PRODUCTION
 NO GENERAL ENGINE
 NO GODOT SHARED CODE
 NO HTML SHARED RUNTIME
@@ -1552,15 +1597,21 @@ STATUS:
 EXPERIMENTAL / DROP-OK
 
 CURRENT GATE:
-S0 — BOOT & INPUT
-
-CURRENT OBJECTIVE:
-Generate and boot a valid SFC ROM,
-then verify P1 Pad and P2 SNES Mouse raw input.
-
-NEXT GATE:
 S1 — DRIVE
 
-DO NOT START S1
-UNTIL S0 IS VERIFIED AND USER APPROVES GO.
+CURRENT OBJECTIVE:
+Validate whether RicochetAngles-style hull movement
+is viable on SFC.
+
+COMPLETED GATE:
+S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
+
+CURRENT STATUS:
+ACTIVE / NOT YET IMPLEMENTED
+
+NEXT IMPLEMENTATION TASK:
+S1-01 — Hull Movement V0
+
+DO NOT IMPLEMENT S1-01
+WITHOUT A SEPARATE TASK INSTRUCTION.
 ```

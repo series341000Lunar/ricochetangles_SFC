@@ -235,10 +235,10 @@ CURRENT GATE
 S0 — BOOT & INPUT
 
 CURRENT SUBTASK
-S0-03 — P2 SNES Mouse Raw Input — VERIFIED 2026-08-23
+S0-04 — Final Regression & Cross-Emulator Validation — VERIFIED 2026-08-23
 
 NEXT SUBTASK
-S0 REVIEW / SECONDARY EMULATOR CROSS-BOOT — NOT STARTED / USER APPROVAL REQUIRED
+S0 FINAL USER REVIEW — USER DECISION REQUIRED
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -1427,14 +1427,14 @@ Agent / Codex가 가능한 한 담당할 영역:
 
 8. Build / Verify — VERIFIED 2026-08-23
 
-9. S0 review — NOT STARTED / USER APPROVAL REQUIRED
+9. S0 final regression / cross-emulator review — VERIFIED 2026-08-23
 
-10. GO / REVISE / DROP
+10. GO / REVISE / DROP — USER DECISION REQUIRED
 ```
 
-현재 `7. P2 Mouse raw input`과 반복 가능한 Build / Verify까지 S0-03에서 검증했다.
+현재 S0-04에서 MesenCE 최종 입력 회귀, 결정적 clean build, ROM sanity와 Delta iOS 보조 교차 호환성까지 검증했다.
 
-Secondary Emulator 교차 부팅과 S0 review는 아직 시작하지 않았다. 사용자 승인 전 다음 작업으로 진행하지 않는다.
+Secondary PC Emulator는 설치되어 있지 않아 `UNVERIFIED`이며 실제 Super Famicom도 `UNVERIFIED`다. S0 Final Acceptance Candidate는 사용자 검토 준비 상태지만 Agent가 S0를 닫거나 S1을 시작하지 않는다.
 
 ---
 

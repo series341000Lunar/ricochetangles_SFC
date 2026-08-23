@@ -589,16 +589,40 @@ P0000 C1 X00+000 Y00+000 L0R0S0
 5fce7e8a05a17cc8825d705b00f01f39514b5ecc2935424bbf1385dd717e862b
 ```
 
+## S0-04 Final Regression & Cross-Emulator Validation
+
+2026-08-23에 S0-03 Known Good Source를 변경하지 않고 최종 회귀검사를 수행했습니다. `scripts\build.ps1` clean build를 두 번 실행했으며 compiler warning/error 없이 두 번 모두 `ROM_VERIFY=PASS`였습니다.
+
+```text
+BUILD 1 SHA-256: 5fce7e8a05a17cc8825d705b00f01f39514b5ecc2935424bbf1385dd717e862b
+BUILD 2 SHA-256: 5fce7e8a05a17cc8825d705b00f01f39514b5ecc2935424bbf1385dd717e862b
+MATCH: YES
+```
+
+MesenCE 2.2.1에서 ROM boot, 화면 안정성, P1 12-button raw input, P1 복합입력, P2 Mouse 연결·방향·idle·좌우 button, P1+P2 동시 입력을 다시 확인했습니다. 최종 입력 회귀 결과는 사용자 확인을 포함해 `PASS / VERIFIED IN MESENCE / USER CONFIRMED`입니다.
+
+현재 Windows 개발 PC에서는 bsnes, ares, higan, Snes9x 또는 RetroArch 계열의 Secondary PC Emulator 설치를 확인하지 못했습니다.
+
+```text
+SECONDARY PC EMULATOR: NOT INSTALLED
+SECONDARY PC ROM/P1/P2: UNVERIFIED
+```
+
+동일 S0 ROM 계열은 Delta iOS에서 ROM boot, 화면 출력과 virtual P1 SNES controller가 정상 작동하는 것을 사용자가 확인했습니다. 이는 `SUPPLEMENTARY CROSS-EMULATOR COMPATIBILITY / USER CONFIRMED`이며 실제 Super Famicom 검증은 아닙니다. Delta iOS의 P2 SNES Mouse는 검증하지 않았습니다.
+
 ## 현재 검증 경계
 
 * `PASS`: clean/repeatable build, `.sfc` 생성, ROM sanity check, MesenCE 2.2.1 부팅 및 S0-03 화면 출력
 * `PASS`: P1 index 0의 12개 Standard Pad held/current 입력, raw mask, 해제 및 동시 입력
 * `PASS`: P2 index 1의 SNES Mouse 검출, raw X/Y, signed DX/DY, sensitivity 및 좌/우 held button 입력
 * `PASS`: P1 Pad와 P2 Mouse의 이동 및 button 동시 입력
-* `UNVERIFIED`: Secondary Emulator 교차 부팅
+* `PASS`: S0-04 MesenCE 최종 회귀 및 동일 SHA-256의 clean build 2회
+* `PASS / USER CONFIRMED`: Delta iOS ROM boot, 화면 출력 및 virtual P1 controller 보조 교차 호환성
+* `UNVERIFIED`: Secondary PC Emulator — 설치되지 않음
+* `UNVERIFIED`: Delta iOS P2 SNES Mouse
 * `UNVERIFIED`: 실제 Super Famicom 하드웨어
 
-S0-03 입력 검증은 완료됐습니다. Secondary Emulator 교차 부팅과 최종 S0 review가 남아 있으므로 전체 S0 Gate는 아직 닫히지 않았습니다.
+S0 Final Acceptance Candidate는 사용자 검토 준비 상태입니다. S0 폐쇄와 `GO S1` 판정은 사용자가 결정하며, 그 전에는 S1을 시작하지 않습니다.
 
 ---
 

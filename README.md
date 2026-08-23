@@ -412,10 +412,11 @@ C
 Make-based Build
 ```
 
-초기 SDK 후보:
+S0-01에서 고정한 SDK:
 
 ```text
-PVSnesLib
+PVSnesLib 4.6.0
+C:\snesdev\pvsneslib-4.6.0
 ```
 
 초기 ROM은 가능한 한 단순한 구성을 사용합니다.
@@ -431,36 +432,107 @@ Enhancement : None
 
 실제 검증을 통해 필요성이 확인되기 전에는 Enhancement Chip을 전제로 설계하지 않습니다.
 
-Toolchain과 정확한 Build 명령은 **S0 검증 과정에서 실제 동작이 확인된 뒤 이 README에 갱신합니다.**
+이 구성으로 Windows/MSYS2 빌드와 MesenCE 부팅을 실제 확인했습니다.
 
 ---
 
 # Build
 
-**현재 S0 Toolchain bootstrap 이전 단계입니다.**
+## S0-01 검증 환경
 
-따라서 아직 공식 Build 절차는 고정하지 않았습니다.
+2026-08-23에 다음 구성을 실제 사용했습니다.
 
-S0 완료 후 이 섹션에는 최소한 다음 내용이 추가될 예정입니다.
+| 구성 요소 | 버전 / 경로 |
+| --- | --- |
+| MSYS2 | `C:\msys64` / runtime `3.6.9-2` / UCRT64 |
+| GNU Make | `4.4.1-3` |
+| PVSnesLib | `4.6.0` |
+| PVSnesLib 설치 경로 | `C:\snesdev\pvsneslib-4.6.0` |
+| 816-tcc | `0.9.25` |
+| WLA-65816 | `10.7a` |
+| WLALINK | `5.22a` |
+| MesenCE | `2.2.1` |
+| MesenCE 실행 파일 | `C:\Users\LunarGagarin\Documents\MesenCE\Mesen.exe` |
+
+사용한 PVSnesLib 공식 Windows 릴리스 파일은 `pvsneslib_460_64b_windows_release.zip`이며 SHA-256은 다음과 같습니다.
 
 ```text
-Prerequisites
-Toolchain Version
-Environment Setup
-Build Command
-Verify Command
-Generated ROM Path
-Emulator Launch
+bfb651671af99cd0fdc64a469a3e9cbff53dee9c3e0b27879e15495e2de4f78e
 ```
 
-목표는 가능한 한 다음과 같은 단순한 개발 흐름을 만드는 것입니다.
+저장소 스크립트는 `PVSNESLIB_HOME=/c/snesdev/pvsneslib-4.6.0`과 UCRT64 환경을 해당 프로세스에만 설정합니다. 전역 PATH나 영구 사용자 환경변수 변경은 필요하지 않습니다.
+
+## Build + Verify
+
+저장소 루트의 PowerShell에서 실행합니다.
+
+```powershell
+.\scripts\build.ps1
+```
+
+이 명령은 기존 `build/`만 안전하게 비운 뒤 별도 작업 디렉터리에서 clean build하고, ROM sanity check까지 수행합니다.
+
+성공 시 최종 ROM은 다음 위치에 생성됩니다.
 
 ```text
-one command
-→ build
-→ verify
-→ .sfc
+build\rom\ricochetangles_s0_hello.sfc
 ```
+
+ROM 검증만 다시 실행하려면 다음 명령을 사용합니다.
+
+```powershell
+.\tools\verify-rom.ps1 -RomPath .\build\rom\ricochetangles_s0_hello.sfc
+```
+
+검증 항목:
+
+* 256 KiB power-of-two ROM 및 32 KiB LoROM bank 정렬
+* Internal title `RICOCHETANGLES S0`
+* LoROM / SlowROM (`0x20`)
+* ROM only (`0x00`)
+* SRAM 없음 (`0x00`)
+* Japan/SFC destination (`0x00`)
+* Header ROM size와 실제 파일 크기 일치
+* Checksum / complement 및 실제 ROM byte sum
+* LoROM reset vector sanity
+
+## MesenCE 실행
+
+먼저 Build + Verify를 통과한 뒤 실행합니다.
+
+```powershell
+.\scripts\run-mesen.ps1
+```
+
+wrapper가 실제로 호출하는 형식은 다음과 같습니다.
+
+```text
+C:\Users\LunarGagarin\Documents\MesenCE\Mesen.exe <ABSOLUTE_ROM_PATH>
+```
+
+S0-01에서 MesenCE 창 제목 `MesenCE - ricochetangles_s0_hello`와 다음 화면 출력을 직접 확인했습니다.
+
+```text
+RICOCHETANGLES SFC
+S0 HELLO
+PVSNESLIB 4.6.0
+BUILD S0-01
+```
+
+동일한 clean build를 연속 두 번 실행했을 때 ROM SHA-256도 일치했습니다.
+
+```text
+48cb7cbedcf9095f9a9b8c62334b46ed0c99fe798f59498b1f2b6fd82780479a
+```
+
+## 현재 검증 경계
+
+* `PASS`: clean/repeatable build, `.sfc` 생성, ROM sanity check, MesenCE 2.2.1 부팅 및 화면 출력
+* `UNVERIFIED`: Secondary Emulator 교차 부팅
+* `UNVERIFIED`: 실제 Super Famicom 하드웨어
+* 미구현: P1 Controller 및 P2 SNES Mouse 입력 — S0-01 범위 밖이며 다음 작업에서 별도 검증
+
+S0-01은 완료됐지만 전체 S0 Gate는 아직 닫히지 않았습니다.
 
 ---
 

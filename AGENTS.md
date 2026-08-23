@@ -145,19 +145,34 @@ Secondary Emulator
 
 PVSnesLib / SFC Toolchain
 
-현재 PVSnesLib의 실제 설치 경로는 아직 확정되지 않았다.
+S0-01에서 실제 빌드와 MesenCE 부팅에 성공한 canonical toolchain은 다음과 같다.
 
-따라서 다음 값을 아직 임의로 확정하지 않는다.
+PVSnesLib version:
 
-PVSNESLIB_HOME
+4.6.0
 
-S0-01 Toolchain Bootstrap에서:
+Windows install path:
 
-사용할 PVSnesLib 버전을 실제로 결정한다.
-Windows/MSYS2에서 설치한다.
-실제 Build 성공을 확인한다.
-성공한 설치 경로를 고정한다.
-이 섹션과 README.md에 실제 값을 기록한다.
+C:\snesdev\pvsneslib-4.6.0
+
+PVSNESLIB_HOME in MSYS2:
+
+/c/snesdev/pvsneslib-4.6.0
+
+Release archive:
+
+pvsneslib_460_64b_windows_release.zip
+
+SHA-256:
+
+bfb651671af99cd0fdc64a469a3e9cbff53dee9c3e0b27879e15495e2de4f78e
+
+Required MSYS2 build package:
+
+make 4.4.1-3
+
+저장소의 scripts/build.ps1은 위 경로를 process-local 환경으로 명시한다.
+전역 PATH 또는 영구 PVSNESLIB_HOME 설정에 의존하지 않는다.
 
 Toolchain 설치 위치를 매 Build마다 자동 검색하는 구조는 만들지 않는다.
 
@@ -208,13 +223,22 @@ MESEN EXECUTABLE
 C:\Users\LunarGagarin\Documents\MesenCE\Mesen.exe
 
 PVSNESLIB
-Not installed / path not yet contracted
+Version 4.6.0
+
+PVSNESLIB HOME
+C:\snesdev\pvsneslib-4.6.0
+
+PVSNESLIB HOME IN MSYS2
+/c/snesdev/pvsneslib-4.6.0
 
 CURRENT GATE
 S0 — BOOT & INPUT
 
 CURRENT SUBTASK
-S0-01 — Toolchain Bootstrap & Hello ROM
+S0-01 — Toolchain Bootstrap & Hello ROM — VERIFIED 2026-08-23
+
+NEXT SUBTASK
+S0-02 — NOT STARTED / USER APPROVAL REQUIRED
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -1408,7 +1432,9 @@ Agent / Codex가 가능한 한 담당할 영역:
 10. GO / REVISE / DROP
 ```
 
-현재 `1. Repository contract` 단계다.
+현재 `5. Emulator boot`까지 S0-01에서 검증했다.
+
+`6. P1 raw input`은 S0-02이며 사용자 승인 전 시작하지 않는다.
 
 ---
 

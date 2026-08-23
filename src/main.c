@@ -1,4 +1,5 @@
 #include <snes.h>
+#include "hull_placeholder.inc"
 
 #define FIXED_SHIFT 8
 
@@ -16,8 +17,10 @@
 
 #define HULL_OAM_ID 0
 #define MARKER_OAM_ID 4
-#define HULL_TILE 0
-#define MARKER_TILE 2
+#define HULL_GFX_VRAM_ADDRESS 0x0000
+#define HULL_GFX_BYTES 2048
+#define MARKER_GFX_VRAM_ADDRESS 0x0400
+#define MARKER_TILE 64
 #define MARKER_DISTANCE 12
 
 typedef struct
@@ -44,26 +47,11 @@ static const s16 quarterSin[65] = {
     256
 };
 
-static const u8 hullTileData[32] = {
-    0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
-    0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
 static const u8 markerTileData[32] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x00, 0x3C,
     0x00, 0x3C, 0x00, 0x3C, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
-static const u16 hullPalette[16] = {
-    0x0000,
-    RGB5(8, 23, 10),
-    RGB5(31, 29, 4),
-    0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000
 };
 
 static void formatHex16(u16 value, char *output)
@@ -103,6 +91,16 @@ static s16 sin256(u8 angle)
 static s16 cos256(u8 angle)
 {
     return sin256((u8)(angle + 64));
+}
+
+static u8 hullVisualFrame(u8 heading)
+{
+    return (u8)((((u16)heading + 8) >> 4) & 0x0F);
+}
+
+static u16 hullVisualTile(u8 visualFrame)
+{
+    return (u16)(((u16)(visualFrame >> 3) << 5) + ((u16)(visualFrame & 0x07) << 1));
 }
 
 static void resolveHullInput(u16 pad, HullState *hull)
@@ -254,11 +252,13 @@ static void updateHullPosition(HullState *hull)
 
 static void updateHullSprites(const HullState *hull)
 {
+    u8 visualFrame = hullVisualFrame(hull->heading);
     s16 centerX = (s16)(hull->positionX >> FIXED_SHIFT);
     s16 centerY = (s16)(hull->positionY >> FIXED_SHIFT);
     s16 markerX = centerX + ((cos256(hull->heading) * MARKER_DISTANCE) >> 8) - 4;
     s16 markerY = centerY + ((sin256(hull->heading) * MARKER_DISTANCE) >> 8) - 4;
 
+    oamSetGfxOffset(HULL_OAM_ID, hullVisualTile(visualFrame));
     oamSetXY(HULL_OAM_ID, centerX - 8, centerY - 8);
     oamSetXY(MARKER_OAM_ID, markerX, markerY);
 }
@@ -289,7 +289,9 @@ static void formatStatusLine(
     formatHex16(speedMagnitude, &output[20]);
     output[24] = 'C';
     output[25] = mouseConnected != 0 ? '1' : '0';
-    output[26] = '\0';
+    output[26] = 'F';
+    formatHex8(hullVisualFrame(hull->heading), &output[27]);
+    output[29] = '\0';
 }
 
 static void formatMouseStatusLine(
@@ -313,16 +315,13 @@ static void formatMouseStatusLine(
 static void initializeHullSprites(void)
 {
     oamInit();
-    oamInitGfxAttr(0x0000, OBJ_SIZE8_L16);
+    oamInitGfxAttr(HULL_GFX_VRAM_ADDRESS, OBJ_SIZE8_L16);
 
-    dmaCopyVram((u8 *)hullTileData, 0x0000, sizeof(hullTileData));
-    dmaCopyVram((u8 *)hullTileData, 0x0010, sizeof(hullTileData));
-    dmaCopyVram((u8 *)markerTileData, 0x0020, sizeof(markerTileData));
-    dmaCopyVram((u8 *)hullTileData, 0x0100, sizeof(hullTileData));
-    dmaCopyVram((u8 *)hullTileData, 0x0110, sizeof(hullTileData));
-    dmaCopyCGram((u8 *)hullPalette, 128, sizeof(hullPalette));
+    dmaCopyVram(&hullPlaceholderTiles, HULL_GFX_VRAM_ADDRESS, HULL_GFX_BYTES);
+    dmaCopyVram((u8 *)markerTileData, MARKER_GFX_VRAM_ADDRESS, sizeof(markerTileData));
+    dmaCopyCGram(&hullPlaceholderPalette, 128, (&hullPlaceholderPaletteEnd - &hullPlaceholderPalette));
 
-    oamSet(HULL_OAM_ID, 120, 136, 3, 0, 0, HULL_TILE, 0);
+    oamSet(HULL_OAM_ID, 120, 136, 3, 0, 0, hullVisualTile(0), 0);
     oamSetEx(HULL_OAM_ID, OBJ_LARGE, OBJ_SHOW);
     oamSet(MARKER_OAM_ID, 136, 140, 3, 0, 0, MARKER_TILE, 0);
     oamSetEx(MARKER_OAM_ID, OBJ_SMALL, OBJ_SHOW);
@@ -337,7 +336,7 @@ int main(void)
     u8 mouseRawY;
     u8 mouseButtons;
     u8 mouseSensitivityValue;
-    char statusLine[27];
+    char statusLine[30];
     char mouseStatusLine[11];
 
     hull.positionX = (s32)128 << FIXED_SHIFT;
@@ -357,9 +356,9 @@ int main(void)
     bgSetDisable(1);
     bgSetDisable(2);
 
-    consoleDrawText(6, 0, "S1-01R TANK CONTROL");
-    consoleDrawText(0, 2, "PRAW T R X  Y  H  SPEED C");
-    consoleDrawText(0, 3, "P0000TNRNX80Y90H00S+0000C0");
+    consoleDrawText(5, 0, "S1-02 HULL 16-DIR V0");
+    consoleDrawText(0, 2, "PRAW T R X  Y  H  SPEED C FRM");
+    consoleDrawText(0, 3, "P0000TNRNX80Y90H00S+0000C0F00");
     consoleDrawText(0, 5, "P2 RAW U/V  B BTN  M SENS");
     consoleDrawText(0, 6, "U00V00B0M0");
 

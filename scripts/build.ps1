@@ -9,6 +9,7 @@ $bashPath = Join-Path $msysRoot 'usr\bin\bash.exe'
 $makePath = Join-Path $msysRoot 'usr\bin\make.exe'
 $pvsneslibWindowsPath = 'C:\snesdev\pvsneslib-4.6.0'
 $pvsneslibMsysPath = '/c/snesdev/pvsneslib-4.6.0'
+$gfx4SnesPath = Join-Path $pvsneslibWindowsPath 'devkitsnes\tools\gfx4snes.exe'
 
 function ConvertTo-MsysPath {
     param([Parameter(Mandatory)][string]$WindowsPath)
@@ -35,6 +36,7 @@ function Restore-ProcessEnvironmentVariable {
 foreach ($requiredPath in @(
     $bashPath,
     $makePath,
+    $gfx4SnesPath,
     (Join-Path $pvsneslibWindowsPath 'devkitsnes\snes_rules')
 )) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
@@ -48,6 +50,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $repoRoot = [System.IO.Path]::GetFullPath(($repoRootOutput | Select-Object -First 1).Trim())
+$hullAssetSource = Join-Path $repoRoot 'assets\hull_placeholder\hull_16dir.txt'
+$hullAssetGenerator = Join-Path $repoRoot 'tools\generate-hull-placeholder.ps1'
+foreach ($requiredProjectPath in @($hullAssetSource, $hullAssetGenerator)) {
+    if (-not (Test-Path -LiteralPath $requiredProjectPath -PathType Leaf)) {
+        throw "Required S1-02 project file is missing: $requiredProjectPath"
+    }
+}
+
 $buildRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot 'build'))
 $expectedPrefix = $repoRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
 if (-not $buildRoot.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -69,6 +79,11 @@ New-Item -ItemType Directory -Path $workSourceRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $romRoot -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'Makefile') -Destination $workRoot
 Copy-Item -LiteralPath (Join-Path $repoRoot 'src\main.c') -Destination $workSourceRoot
+
+& $hullAssetGenerator `
+    -SourcePath $hullAssetSource `
+    -OutputDirectory $workRoot `
+    -Gfx4SnesPath $gfx4SnesPath
 
 $originalMsystem = [System.Environment]::GetEnvironmentVariable('MSYSTEM', 'Process')
 $originalPvsneslibHome = [System.Environment]::GetEnvironmentVariable('PVSNESLIB_HOME', 'Process')

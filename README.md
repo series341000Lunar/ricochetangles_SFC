@@ -2,7 +2,7 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S1 — DRIVE / S1-01R PASS / USER CONFIRMED`
+> **현재 상태:** `S1 — DRIVE / S1-02 PASS / USER CONFIRMED 2026-08-23`
 > **완료 Gate:** `S0 — BOOT & INPUT / PASS / CLOSED / USER GO APPROVED`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
@@ -85,12 +85,12 @@ C / 65816 / SNES Hardware
 
 ## S1 — DRIVE
 
-S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE입니다. S1-01과 S1-01R은 2026-08-23 각각 `PASS / USER CONFIRMED`됐습니다.
+S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE입니다. S1-01, S1-01R, S1-02는 2026-08-23 각각 `PASS / USER CONFIRMED`됐습니다.
 
-완료된 작업:
+현재 작업:
 
 ```text
-S1-01R — Tank Control Revision — PASS / USER CONFIRMED
+S1-02 — 16-Direction Hull Presentation V0 — COMPLETE / USER CONFIRMED
 ```
 
 초기 S1 검증 범위:
@@ -124,7 +124,7 @@ P2 Mouse는 S0에서 기술적으로 검증됐지만 실제 포탑 조작 연결
 * Physical Cartridge
 * Custom Controller
 
-S1-01 범위를 넘어서는 위 기능은 구현하지 않았으며, 별도 작업 지시 전에는 S1-02로 진행하지 않습니다.
+S1-02 범위를 넘어서는 위 기능은 구현하지 않았으며, 별도 작업 지시 전에는 S1-03/S2로 진행하지 않습니다.
 
 ---
 
@@ -168,7 +168,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S1 — DRIVE — ACTIVE / S1-01R PASS / USER CONFIRMED
+## S1 — DRIVE — ACTIVE / S1-02 PASS
 
 플레이어 전차의 차체 이동을 구현합니다.
 
@@ -675,6 +675,27 @@ S1-01R PASS
 USER CONFIRMED 2026-08-23
 ```
 
+## S1-02 16-Direction Hull Presentation V0
+
+S1-01R의 gameplay heading, Q8.8 movement와 여섯 tuning constant를 변경하지 않고 0~255 heading을 16방향 placeholder frame으로 표시합니다. Nearest-frame 계산은 `((heading + 8) >> 4) & 0x0F`이며 frame 00부터 0F까지 시계방향 22.5도 간격입니다. Diagnostic은 internal heading `H`와 visual frame `F`를 동시에 표시합니다.
+
+Asset source는 [16-frame ASCII indexed sheet](assets/hull_placeholder/hull_16dir.txt)입니다. `scripts/build.ps1`이 전용 PowerShell generator로 128×32 indexed BMP를 조립한 뒤 PVSnesLib 4.6.0의 `gfx4snes 2.2.0`을 호출해 SNES 4bpp `.pic`과 `.pal`을 `build/work`에 생성합니다. 별도 GUI conversion이나 수동 generated binary 편집은 필요하지 않습니다.
+
+Hull은 frame당 16×16, 4 tiles/128 bytes이며 전체 16 frames는 64 tiles/2,048 graphics bytes입니다. 16-color OBJ palette 중 transparent, dark green, yellow diagnostic marker, green, light-green front highlight의 5 entries를 사용합니다. 16 frames는 128×32 sheet의 16-tile-wide VRAM layout으로 한 번만 업로드되며, runtime은 OAM tile offset만 변경합니다. Hull OBJ 1개와 기존 yellow marker OBJ 1개를 유지합니다.
+
+두 번의 clean build가 compiler warning/error 없이 `ROM_VERIFY=PASS`였고 동일 SHA-256을 생성했습니다.
+
+```text
+8c711e7991f33f7f9be0225dac2c1ba0cb638b1a4d326804ce551eeb5d6820bb
+```
+
+MesenCE 2.2.1과 지정된 bsnes nightly에서 동일 ROM의 `S1-02 HULL 16-DIR V0` 화면, hull/front highlight, heading marker와 `H/F` diagnostic 부팅을 확인했습니다. Asset pixel source와 generated SNES 4bpp roundtrip, cardinal/wrap mapping과 tile layout도 자동 검사로 통과했습니다. 사용자는 CW/CCW 양방향 완전 회전에서 `F00` 복귀, 이동 중 포함 frame 누락 없음, 복합 이동의 안정적인 방향 회전과 유지, 후진 및 후진 선회 sprite 안정성, 관성 중 회전, 이동 중 P1 버튼과 P2 Mouse 동시 입력을 모두 확인했습니다. 현재 상태는 다음과 같습니다.
+
+```text
+S1-02 PASS
+USER CONFIRMED 2026-08-23
+```
+
 ---
 
 # AI-Assisted Development
@@ -810,10 +831,10 @@ COMPLETED GATE
 S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
 
 CURRENT STATUS
-S1-01R — PASS / USER CONFIRMED 2026-08-23
+S1-02 — PASS / USER CONFIRMED 2026-08-23
 
 CURRENT SUBTASK
-S1-01R — Tank Control Revision — COMPLETE / STOP
+S1-02 — 16-Direction Hull Presentation V0 — COMPLETE / STOP
 
-Do not proceed to S1-02 without a separate task instruction.
+Do not close S1 or proceed to S1-03/S2 without a separate task instruction.
 ```

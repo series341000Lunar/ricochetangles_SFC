@@ -561,15 +561,44 @@ BUILD S0-01
 9d4387535c5ca1e1a8d60317b4b87484d1425d7ae605af525fff66a41f70cd1a
 ```
 
+## S0-03 P2 SNES Mouse Raw Input
+
+2026-08-23에 MesenCE 2.2.1의 Port 1을 `SNES Controller`, Port 2를 `SNES Mouse`로 설정하고 PVSnesLib 4.6.0의 P2 Mouse raw input을 확인했습니다. ROM은 Windows mouse 좌표나 버튼을 직접 읽지 않으며 MesenCE가 변환한 SNES Mouse protocol만 처리합니다.
+
+초기화는 `initMouse(MOUSE_SLOW)`을 사용하고 최소 한 번의 VBlank 뒤부터 `mouseConnect[1]`, `mouse_x[1]`, `mouse_y[1]`, `mousePressed[1]`, `mouseSensitivity[1]`을 읽습니다. P1은 기존 `padsCurrent(0)` raw mask 표시를 유지합니다.
+
+화면 상태줄 형식은 다음과 같습니다.
+
+```text
+P0000 C1 X00+000 Y00+000 L0R0S0
+```
+
+* `P`: P1 current raw mask
+* `C`: P2 Mouse 연결 상태
+* `X`, `Y`: raw hexadecimal byte와 signed decimal delta
+* `L`, `R`: 현재 held button 상태
+* `S`: SNES Mouse sensitivity (`MOUSE_SLOW` 초기값 `0`)
+
+사용자 수동 검증에서 오른쪽 이동은 X raw의 bit 7이 0이고 양의 DX, 왼쪽 이동은 bit 7이 1이고 음의 DX로 표시됐습니다. 아래쪽 이동은 Y raw의 bit 7이 0이고 양의 DY, 위쪽 이동은 bit 7이 1이고 음의 DY로 표시됐습니다. 정지하면 `X00+000 Y00+000`으로 복귀했습니다.
+
+좌클릭과 우클릭은 각각 `L1`, `R1`로 독립 표시되고 해제하면 0으로 복귀했습니다. 두 버튼을 함께 누르면 `L1R1`로 표시됐습니다. P1 D-pad 또는 face/shoulder button을 누른 상태에서도 P2 상하좌우 이동과 좌우 button 입력이 동시에 갱신되는 것을 확인했습니다.
+
+동일한 clean build를 연속 두 번 실행한 S0-03 ROM SHA-256은 다음과 같이 일치했습니다.
+
+```text
+5fce7e8a05a17cc8825d705b00f01f39514b5ecc2935424bbf1385dd717e862b
+```
+
 ## 현재 검증 경계
 
-* `PASS`: clean/repeatable build, `.sfc` 생성, ROM sanity check, MesenCE 2.2.1 부팅 및 S0-02 화면 출력
+* `PASS`: clean/repeatable build, `.sfc` 생성, ROM sanity check, MesenCE 2.2.1 부팅 및 S0-03 화면 출력
 * `PASS`: P1 index 0의 12개 Standard Pad held/current 입력, raw mask, 해제 및 동시 입력
+* `PASS`: P2 index 1의 SNES Mouse 검출, raw X/Y, signed DX/DY, sensitivity 및 좌/우 held button 입력
+* `PASS`: P1 Pad와 P2 Mouse의 이동 및 button 동시 입력
 * `UNVERIFIED`: Secondary Emulator 교차 부팅
 * `UNVERIFIED`: 실제 Super Famicom 하드웨어
-* 미구현: P2 SNES Mouse 입력 — S0-02 범위 밖이며 사용자 승인 후 별도 검증
 
-S0-02까지 완료됐지만 전체 S0 Gate는 아직 닫히지 않았습니다.
+S0-03 입력 검증은 완료됐습니다. Secondary Emulator 교차 부팅과 최종 S0 review가 남아 있으므로 전체 S0 Gate는 아직 닫히지 않았습니다.
 
 ---
 

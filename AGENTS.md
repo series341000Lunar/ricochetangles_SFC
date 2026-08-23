@@ -235,10 +235,10 @@ CURRENT GATE
 S0 — BOOT & INPUT
 
 CURRENT SUBTASK
-S0-02 — P1 Standard Pad Raw Input — VERIFIED 2026-08-23
+S0-03 — P2 SNES Mouse Raw Input — VERIFIED 2026-08-23
 
 NEXT SUBTASK
-S0-03 — P2 SNES Mouse Raw Input — NOT STARTED / USER APPROVAL REQUIRED
+S0 REVIEW / SECONDARY EMULATOR CROSS-BOOT — NOT STARTED / USER APPROVAL REQUIRED
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -1423,18 +1423,18 @@ Agent / Codex가 가능한 한 담당할 영역:
 
 6. P1 raw input — VERIFIED 2026-08-23
 
-7. P2 Mouse raw input — NOT STARTED / USER APPROVAL REQUIRED
+7. P2 Mouse raw input — VERIFIED 2026-08-23
 
-8. Build / Verify
+8. Build / Verify — VERIFIED 2026-08-23
 
-9. S0 review
+9. S0 review — NOT STARTED / USER APPROVAL REQUIRED
 
 10. GO / REVISE / DROP
 ```
 
-현재 `6. P1 raw input`까지 S0-02에서 검증했다.
+현재 `7. P2 Mouse raw input`과 반복 가능한 Build / Verify까지 S0-03에서 검증했다.
 
-`7. P2 Mouse raw input`은 S0-03이며 사용자 승인 전 시작하지 않는다.
+Secondary Emulator 교차 부팅과 S0 review는 아직 시작하지 않았다. 사용자 승인 전 다음 작업으로 진행하지 않는다.
 
 ---
 

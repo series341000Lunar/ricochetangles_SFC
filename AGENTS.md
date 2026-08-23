@@ -235,10 +235,10 @@ CURRENT GATE
 S0 — BOOT & INPUT
 
 CURRENT SUBTASK
-S0-01 — Toolchain Bootstrap & Hello ROM — VERIFIED 2026-08-23
+S0-02 — P1 Standard Pad Raw Input — VERIFIED 2026-08-23
 
 NEXT SUBTASK
-S0-02 — NOT STARTED / USER APPROVAL REQUIRED
+S0-03 — P2 SNES Mouse Raw Input — NOT STARTED / USER APPROVAL REQUIRED
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -1421,9 +1421,9 @@ Agent / Codex가 가능한 한 담당할 영역:
 
 5. Emulator boot
 
-6. P1 raw input
+6. P1 raw input — VERIFIED 2026-08-23
 
-7. P2 Mouse raw input
+7. P2 Mouse raw input — NOT STARTED / USER APPROVAL REQUIRED
 
 8. Build / Verify
 
@@ -1432,9 +1432,9 @@ Agent / Codex가 가능한 한 담당할 영역:
 10. GO / REVISE / DROP
 ```
 
-현재 `5. Emulator boot`까지 S0-01에서 검증했다.
+현재 `6. P1 raw input`까지 S0-02에서 검증했다.
 
-`6. P1 raw input`은 S0-02이며 사용자 승인 전 시작하지 않는다.
+`7. P2 Mouse raw input`은 S0-03이며 사용자 승인 전 시작하지 않는다.
 
 ---
 

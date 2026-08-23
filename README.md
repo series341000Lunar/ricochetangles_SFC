@@ -525,14 +525,51 @@ BUILD S0-01
 48cb7cbedcf9095f9a9b8c62334b46ed0c99fe798f59498b1f2b6fd82780479a
 ```
 
+## S0-02 P1 Pad Raw Input
+
+2026-08-23에 PVSnesLib 4.6.0의 `padsCurrent(0)`으로 P1 Standard Pad의 held/current 상태를 매 프레임 읽는 것을 MesenCE에서 확인했습니다. ROM은 SNES logical input만 처리하며 PC 키보드 매핑은 포함하지 않습니다.
+
+화면에는 4자리 raw mask와 `UP`, `DOWN`, `LEFT`, `RIGHT`, `A`, `B`, `X`, `Y`, `L`, `R`, `START`, `SELECT`의 독립 상태를 동시에 표시합니다.
+
+| Logical input | 확인한 raw mask |
+| --- | --- |
+| UP | `0800` |
+| DOWN | `0400` |
+| LEFT | `0200` |
+| RIGHT | `0100` |
+| A | `0080` |
+| B | `8000` |
+| X | `0040` |
+| Y | `4000` |
+| L | `0020` |
+| R | `0010` |
+| START | `1000` |
+| SELECT | `2000` |
+
+필수 동시 입력도 각 bit가 함께 `1`로 표시되는 것을 확인했습니다.
+
+| Host input | Logical result | Raw mask |
+| --- | --- | --- |
+| `W + D` | `UP + RIGHT` | `0900` |
+| `W + A` | `UP + LEFT` | `0A00` |
+| `Q + E` | `L + R` | `0030` |
+| `W + Numpad5` | `UP + A` | `0880` |
+
+각 입력을 놓으면 `RAW 0000`과 모든 logical bit `0`으로 돌아오는 것을 확인했습니다. 동일한 clean build를 연속 두 번 실행한 S0-02 ROM SHA-256은 다음과 같이 일치했습니다.
+
+```text
+9d4387535c5ca1e1a8d60317b4b87484d1425d7ae605af525fff66a41f70cd1a
+```
+
 ## 현재 검증 경계
 
-* `PASS`: clean/repeatable build, `.sfc` 생성, ROM sanity check, MesenCE 2.2.1 부팅 및 화면 출력
+* `PASS`: clean/repeatable build, `.sfc` 생성, ROM sanity check, MesenCE 2.2.1 부팅 및 S0-02 화면 출력
+* `PASS`: P1 index 0의 12개 Standard Pad held/current 입력, raw mask, 해제 및 동시 입력
 * `UNVERIFIED`: Secondary Emulator 교차 부팅
 * `UNVERIFIED`: 실제 Super Famicom 하드웨어
-* 미구현: P1 Controller 및 P2 SNES Mouse 입력 — S0-01 범위 밖이며 다음 작업에서 별도 검증
+* 미구현: P2 SNES Mouse 입력 — S0-02 범위 밖이며 사용자 승인 후 별도 검증
 
-S0-01은 완료됐지만 전체 S0 Gate는 아직 닫히지 않았습니다.
+S0-02까지 완료됐지만 전체 S0 Gate는 아직 닫히지 않았습니다.
 
 ---
 

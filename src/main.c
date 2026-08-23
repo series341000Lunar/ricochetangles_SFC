@@ -1,5 +1,6 @@
 #include <snes.h>
 #include "hull_placeholder.inc"
+#include "input_hud.inc"
 
 #define FIXED_SHIFT 8
 
@@ -17,16 +18,22 @@
 
 #define HULL_OAM_ID 0
 #define MARKER_OAM_ID 4
+#define HUD_UP_OAM_ID 8
+#define HUD_DOWN_OAM_ID 12
+#define HUD_LEFT_OAM_ID 16
+#define HUD_RIGHT_OAM_ID 20
 #define HULL_GFX_VRAM_ADDRESS 0x0000
-#define HULL_GFX_BYTES 2048
-#define MARKER_GFX_VRAM_ADDRESS 0x0400
-#define MARKER_TILE 64
-#define MARKER_DISTANCE 12
+#define HULL_GFX_BYTES 8192
+#define INPUT_HUD_GFX_VRAM_ADDRESS 0x1000
+#define INPUT_HUD_GFX_BYTES 3072
+#define INPUT_HUD_TILE_BASE 256
+#define INPUT_HUD_MARKER_TILE (INPUT_HUD_TILE_BASE + 64)
+#define MARKER_DISTANCE 20
 
 typedef struct
 {
-    s32 positionX;
-    s32 positionY;
+    u16 positionX;
+    u16 positionY;
     s16 speed;
     u8 heading;
     s8 throttle;
@@ -34,6 +41,11 @@ typedef struct
 } HullState;
 
 static const char hexDigits[] = "0123456789ABCDEF";
+static HullState hull;
+static char controlStatusLine[13];
+static char hullStatusLine[24];
+static char inputPositionLine[18];
+static char mouseStatusLine[20];
 
 static const s16 quarterSin[65] = {
     0, 6, 13, 19, 25, 31, 38, 44,
@@ -45,13 +57,6 @@ static const s16 quarterSin[65] = {
     237, 239, 241, 243, 245, 247, 248, 250,
     251, 252, 253, 254, 255, 255, 256, 256,
     256
-};
-
-static const u8 markerTileData[32] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x00, 0x3C,
-    0x00, 0x3C, 0x00, 0x3C, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
 static void formatHex16(u16 value, char *output)
@@ -100,7 +105,12 @@ static u8 hullVisualFrame(u8 heading)
 
 static u16 hullVisualTile(u8 visualFrame)
 {
-    return (u16)(((u16)(visualFrame >> 3) << 5) + ((u16)(visualFrame & 0x07) << 1));
+    return (u16)(((u16)(visualFrame >> 2) << 6) + ((u16)(visualFrame & 0x03) << 2));
+}
+
+static u16 inputButtonTile(u8 buttonIndex, u8 pressed)
+{
+    return (u16)(INPUT_HUD_TILE_BASE + ((u16)buttonIndex << 2) + (pressed != 0 ? 2 : 0));
 }
 
 static void resolveHullInput(u16 pad, HullState *hull)
@@ -221,32 +231,62 @@ static void updateHullSpeed(HullState *hull)
 
 static void updateHullPosition(HullState *hull)
 {
-    s32 deltaX = ((s32)cos256(hull->heading) * hull->speed) >> 8;
-    s32 deltaY = ((s32)sin256(hull->heading) * hull->speed) >> 8;
-    s32 minimumX = (s32)HULL_MIN_X << FIXED_SHIFT;
-    s32 maximumX = (s32)HULL_MAX_X << FIXED_SHIFT;
-    s32 minimumY = (s32)HULL_MIN_Y << FIXED_SHIFT;
-    s32 maximumY = (s32)HULL_MAX_Y << FIXED_SHIFT;
+    s16 deltaX = (s16)(((s32)cos256(hull->heading) * hull->speed) >> 8);
+    s16 deltaY = (s16)(((s32)sin256(hull->heading) * hull->speed) >> 8);
+    u16 minimumX = (u16)HULL_MIN_X << FIXED_SHIFT;
+    u16 maximumX = (u16)HULL_MAX_X << FIXED_SHIFT;
+    u16 minimumY = (u16)HULL_MIN_Y << FIXED_SHIFT;
+    u16 maximumY = (u16)HULL_MAX_Y << FIXED_SHIFT;
+    u16 magnitude;
 
-    hull->positionX += deltaX;
-    hull->positionY += deltaY;
+    if (deltaX < 0)
+    {
+        magnitude = (u16)(-deltaX);
+        if (hull->positionX <= minimumX + magnitude)
+        {
+            hull->positionX = minimumX;
+        }
+        else
+        {
+            hull->positionX -= magnitude;
+        }
+    }
+    else
+    {
+        magnitude = (u16)deltaX;
+        if (hull->positionX >= maximumX - magnitude)
+        {
+            hull->positionX = maximumX;
+        }
+        else
+        {
+            hull->positionX += magnitude;
+        }
+    }
 
-    if (hull->positionX < minimumX)
+    if (deltaY < 0)
     {
-        hull->positionX = minimumX;
+        magnitude = (u16)(-deltaY);
+        if (hull->positionY <= minimumY + magnitude)
+        {
+            hull->positionY = minimumY;
+        }
+        else
+        {
+            hull->positionY -= magnitude;
+        }
     }
-    else if (hull->positionX > maximumX)
+    else
     {
-        hull->positionX = maximumX;
-    }
-
-    if (hull->positionY < minimumY)
-    {
-        hull->positionY = minimumY;
-    }
-    else if (hull->positionY > maximumY)
-    {
-        hull->positionY = maximumY;
+        magnitude = (u16)deltaY;
+        if (hull->positionY >= maximumY - magnitude)
+        {
+            hull->positionY = maximumY;
+        }
+        else
+        {
+            hull->positionY += magnitude;
+        }
     }
 }
 
@@ -255,92 +295,145 @@ static void updateHullSprites(const HullState *hull)
     u8 visualFrame = hullVisualFrame(hull->heading);
     s16 centerX = (s16)(hull->positionX >> FIXED_SHIFT);
     s16 centerY = (s16)(hull->positionY >> FIXED_SHIFT);
-    s16 markerX = centerX + ((cos256(hull->heading) * MARKER_DISTANCE) >> 8) - 4;
-    s16 markerY = centerY + ((sin256(hull->heading) * MARKER_DISTANCE) >> 8) - 4;
+    s16 markerX = centerX + ((cos256(hull->heading) * MARKER_DISTANCE) >> 8) - 8;
+    s16 markerY = centerY + ((sin256(hull->heading) * MARKER_DISTANCE) >> 8) - 8;
 
     oamSetGfxOffset(HULL_OAM_ID, hullVisualTile(visualFrame));
-    oamSetXY(HULL_OAM_ID, centerX - 8, centerY - 8);
+    oamSetXY(HULL_OAM_ID, centerX - 16, centerY - 16);
     oamSetXY(MARKER_OAM_ID, markerX, markerY);
 }
 
-static void formatStatusLine(
-    u16 pad,
-    const HullState *hull,
-    u8 mouseConnected,
-    char *output)
+static void updateInputHudSprites(u16 pad)
+{
+    oamSetGfxOffset(HUD_UP_OAM_ID, inputButtonTile(0, (pad & KEY_UP) != 0));
+    oamSetGfxOffset(HUD_DOWN_OAM_ID, inputButtonTile(1, (pad & KEY_DOWN) != 0));
+    oamSetGfxOffset(HUD_LEFT_OAM_ID, inputButtonTile(2, (pad & KEY_LEFT) != 0));
+    oamSetGfxOffset(HUD_RIGHT_OAM_ID, inputButtonTile(3, (pad & KEY_RIGHT) != 0));
+}
+
+static void formatControlStatusLine(const HullState *hull, char *output)
+{
+    output[0] = 'T';
+    output[1] = 'H';
+    output[2] = 'R';
+    output[3] = ':';
+    output[4] = hull->throttle > 0 ? 'F' : (hull->throttle < 0 ? 'R' : 'N');
+    output[5] = ' ';
+    output[6] = 'T';
+    output[7] = 'U';
+    output[8] = 'R';
+    output[9] = 'N';
+    output[10] = ':';
+    output[11] = hull->turn < 0 ? 'L' : (hull->turn > 0 ? 'R' : 'N');
+    output[12] = '\0';
+}
+
+static void formatHullStatusLine(const HullState *hull, char *output)
 {
     u16 speedMagnitude;
 
-    output[0] = 'P';
-    formatHex16(pad, &output[1]);
-    output[5] = 'T';
-    output[6] = hull->throttle > 0 ? 'F' : (hull->throttle < 0 ? 'R' : 'N');
-    output[7] = 'R';
-    output[8] = hull->turn < 0 ? 'L' : (hull->turn > 0 ? 'R' : 'N');
-    output[9] = 'X';
-    formatHex8((u8)(hull->positionX >> FIXED_SHIFT), &output[10]);
-    output[12] = 'Y';
-    formatHex8((u8)(hull->positionY >> FIXED_SHIFT), &output[13]);
-    output[15] = 'H';
-    formatHex8(hull->heading, &output[16]);
-    output[18] = 'S';
-    output[19] = hull->speed < 0 ? '-' : '+';
+    output[0] = 'H';
+    output[1] = 'D';
+    output[2] = 'G';
+    output[3] = ':';
+    formatHex8(hull->heading, &output[4]);
+    output[6] = ' ';
+    output[7] = 'F';
+    output[8] = 'R';
+    output[9] = 'M';
+    output[10] = ':';
+    formatHex8(hullVisualFrame(hull->heading), &output[11]);
+    output[13] = ' ';
+    output[14] = 'S';
+    output[15] = 'P';
+    output[16] = 'D';
+    output[17] = ':';
+    output[18] = hull->speed < 0 ? '-' : '+';
     speedMagnitude = hull->speed < 0 ? (u16)(-hull->speed) : (u16)hull->speed;
-    formatHex16(speedMagnitude, &output[20]);
-    output[24] = 'C';
-    output[25] = mouseConnected != 0 ? '1' : '0';
-    output[26] = 'F';
-    formatHex8(hullVisualFrame(hull->heading), &output[27]);
-    output[29] = '\0';
+    formatHex16(speedMagnitude, &output[19]);
+    output[23] = '\0';
+}
+
+static void formatInputPositionLine(u16 pad, const HullState *hull, char *output)
+{
+    output[0] = 'P';
+    output[1] = '1';
+    output[2] = ':';
+    formatHex16(pad, &output[3]);
+    output[7] = ' ';
+    output[8] = 'X';
+    output[9] = ':';
+    formatHex8((u8)(hull->positionX >> FIXED_SHIFT), &output[10]);
+    output[12] = ' ';
+    output[13] = 'Y';
+    output[14] = ':';
+    formatHex8((u8)(hull->positionY >> FIXED_SHIFT), &output[15]);
+    output[17] = '\0';
 }
 
 static void formatMouseStatusLine(
+    u8 mouseConnected,
     u8 mouseRawX,
     u8 mouseRawY,
     u8 mouseButtons,
     u8 mouseSensitivityValue,
     char *output)
 {
-    output[0] = 'U';
-    formatHex8(mouseRawX, &output[1]);
-    output[3] = 'V';
-    formatHex8(mouseRawY, &output[4]);
-    output[6] = 'B';
-    output[7] = hexDigits[mouseButtons & 0x03];
-    output[8] = 'M';
-    output[9] = hexDigits[mouseSensitivityValue & 0x0F];
-    output[10] = '\0';
+    output[0] = 'P';
+    output[1] = '2';
+    output[2] = ':';
+    output[3] = 'C';
+    output[4] = mouseConnected != 0 ? '1' : '0';
+    output[5] = ' ';
+    output[6] = 'U';
+    formatHex8(mouseRawX, &output[7]);
+    output[9] = ' ';
+    output[10] = 'V';
+    formatHex8(mouseRawY, &output[11]);
+    output[13] = ' ';
+    output[14] = 'B';
+    output[15] = hexDigits[mouseButtons & 0x03];
+    output[16] = ' ';
+    output[17] = 'S';
+    output[18] = hexDigits[mouseSensitivityValue & 0x0F];
+    output[19] = '\0';
 }
 
 static void initializeHullSprites(void)
 {
     oamInit();
-    oamInitGfxAttr(HULL_GFX_VRAM_ADDRESS, OBJ_SIZE8_L16);
+    oamInitGfxAttr(HULL_GFX_VRAM_ADDRESS, OBJ_SIZE16_L32);
 
     dmaCopyVram(&hullPlaceholderTiles, HULL_GFX_VRAM_ADDRESS, HULL_GFX_BYTES);
-    dmaCopyVram((u8 *)markerTileData, MARKER_GFX_VRAM_ADDRESS, sizeof(markerTileData));
+    dmaCopyVram(&inputHudTiles, INPUT_HUD_GFX_VRAM_ADDRESS, INPUT_HUD_GFX_BYTES);
     dmaCopyCGram(&hullPlaceholderPalette, 128, (&hullPlaceholderPaletteEnd - &hullPlaceholderPalette));
+    dmaCopyCGram(&inputHudPalette, 144, (&inputHudPaletteEnd - &inputHudPalette));
 
-    oamSet(HULL_OAM_ID, 120, 136, 3, 0, 0, hullVisualTile(0), 0);
+    oamSet(HULL_OAM_ID, 112, 128, 3, 0, 0, hullVisualTile(0), 0);
     oamSetEx(HULL_OAM_ID, OBJ_LARGE, OBJ_SHOW);
-    oamSet(MARKER_OAM_ID, 136, 140, 3, 0, 0, MARKER_TILE, 0);
+    oamSet(MARKER_OAM_ID, 140, 136, 3, 0, 0, INPUT_HUD_MARKER_TILE, 1);
     oamSetEx(MARKER_OAM_ID, OBJ_SMALL, OBJ_SHOW);
+
+    oamSet(HUD_UP_OAM_ID, 8, 0, 3, 0, 0, inputButtonTile(0, 0), 1);
+    oamSetEx(HUD_UP_OAM_ID, OBJ_SMALL, OBJ_SHOW);
+    oamSet(HUD_DOWN_OAM_ID, 28, 0, 3, 0, 0, inputButtonTile(1, 0), 1);
+    oamSetEx(HUD_DOWN_OAM_ID, OBJ_SMALL, OBJ_SHOW);
+    oamSet(HUD_LEFT_OAM_ID, 56, 0, 3, 0, 0, inputButtonTile(2, 0), 1);
+    oamSetEx(HUD_LEFT_OAM_ID, OBJ_SMALL, OBJ_SHOW);
+    oamSet(HUD_RIGHT_OAM_ID, 76, 0, 3, 0, 0, inputButtonTile(3, 0), 1);
+    oamSetEx(HUD_RIGHT_OAM_ID, OBJ_SMALL, OBJ_SHOW);
 }
 
 int main(void)
 {
-    HullState hull;
     u16 pad;
     u8 mouseConnected;
     u8 mouseRawX;
     u8 mouseRawY;
     u8 mouseButtons;
     u8 mouseSensitivityValue;
-    char statusLine[30];
-    char mouseStatusLine[11];
-
-    hull.positionX = (s32)128 << FIXED_SHIFT;
-    hull.positionY = (s32)144 << FIXED_SHIFT;
+    hull.positionX = (u16)128 << FIXED_SHIFT;
+    hull.positionY = (u16)144 << FIXED_SHIFT;
     hull.speed = 0;
     hull.heading = 0;
     hull.throttle = 0;
@@ -356,11 +449,11 @@ int main(void)
     bgSetDisable(1);
     bgSetDisable(2);
 
-    consoleDrawText(5, 0, "S1-02 HULL 16-DIR V0");
-    consoleDrawText(0, 2, "PRAW T R X  Y  H  SPEED C FRM");
-    consoleDrawText(0, 3, "P0000TNRNX80Y90H00S+0000C0F00");
-    consoleDrawText(0, 5, "P2 RAW U/V  B BTN  M SENS");
-    consoleDrawText(0, 6, "U00V00B0M0");
+    consoleDrawText(13, 0, "THR:N TURN:N");
+    consoleDrawText(13, 1, "S1-02R");
+    consoleDrawText(0, 2, "HDG:00 FRM:00 SPD:+0000");
+    consoleDrawText(0, 3, "P1:0000 X:80 Y:90");
+    consoleDrawText(0, 4, "P2:C0 U00 V00 B0 S0");
 
     initMouse(MOUSE_SLOW);
     WaitForVBlank();
@@ -395,21 +488,25 @@ int main(void)
         updateHullSpeed(&hull);
         updateHullPosition(&hull);
         updateHullSprites(&hull);
+        updateInputHudSprites(pad);
 
-        formatStatusLine(
-            pad,
-            &hull,
-            mouseConnected,
-            statusLine);
-        consoleDrawText(0, 3, "%s", statusLine);
+        formatControlStatusLine(&hull, controlStatusLine);
+        consoleDrawText(13, 0, "%s", controlStatusLine);
+
+        formatHullStatusLine(&hull, hullStatusLine);
+        consoleDrawText(0, 2, "%s", hullStatusLine);
+
+        formatInputPositionLine(pad, &hull, inputPositionLine);
+        consoleDrawText(0, 3, "%s", inputPositionLine);
 
         formatMouseStatusLine(
+            mouseConnected,
             mouseRawX,
             mouseRawY,
             mouseButtons,
             mouseSensitivityValue,
             mouseStatusLine);
-        consoleDrawText(0, 6, "%s", mouseStatusLine);
+        consoleDrawText(0, 4, "%s", mouseStatusLine);
     }
 
     return 0;

@@ -59,8 +59,11 @@ for ($frame = 0; $frame -lt 16; $frame++) {
     }
 }
 
-$width = 128
-$height = 32
+$sourceFrameSize = 16
+$scale = 2
+$outputFrameSize = $sourceFrameSize * $scale
+$width = 8 * $outputFrameSize
+$height = 2 * $outputFrameSize
 $pixels = [byte[]]::new($width * $height)
 $colorIndex = @{
     '.' = [byte]0
@@ -70,12 +73,19 @@ $colorIndex = @{
 }
 
 for ($frame = 0; $frame -lt 16; $frame++) {
-    $frameOriginX = ($frame % 8) * 16
-    $frameOriginY = [Math]::Floor($frame / 8) * 16
-    for ($y = 0; $y -lt 16; $y++) {
+    $frameOriginX = ($frame % 8) * $outputFrameSize
+    $frameOriginY = [Math]::Floor($frame / 8) * $outputFrameSize
+    for ($y = 0; $y -lt $sourceFrameSize; $y++) {
         $row = $frames[$frame][$y]
-        for ($x = 0; $x -lt 16; $x++) {
-            $pixels[(($frameOriginY + $y) * $width) + $frameOriginX + $x] = $colorIndex[[string]$row[$x]]
+        for ($x = 0; $x -lt $sourceFrameSize; $x++) {
+            $pixel = $colorIndex[[string]$row[$x]]
+            for ($scaleY = 0; $scaleY -lt $scale; $scaleY++) {
+                for ($scaleX = 0; $scaleX -lt $scale; $scaleX++) {
+                    $targetX = $frameOriginX + ($x * $scale) + $scaleX
+                    $targetY = $frameOriginY + ($y * $scale) + $scaleY
+                    $pixels[($targetY * $width) + $targetX] = $pixel
+                }
+            }
         }
     }
 }
@@ -139,7 +149,7 @@ finally {
 
 Push-Location $outputFullPath
 try {
-    & $gfx4SnesFullPath -s 8 -o 16 -u 16 -p -t bmp -i $bmpPath
+    & $gfx4SnesFullPath -s 32 -o 16 -u 16 -p -t bmp -i $bmpPath
     if ($LASTEXITCODE -ne 0) {
         throw "gfx4snes failed with exit code $LASTEXITCODE."
     }
@@ -150,8 +160,8 @@ finally {
 
 $picturePath = Join-Path $outputFullPath 'hull_placeholder.pic'
 $palettePath = Join-Path $outputFullPath 'hull_placeholder.pal'
-if ((Get-Item -LiteralPath $picturePath).Length -ne 2048) {
-    throw "Hull graphics size is not 2048 bytes: $picturePath"
+if ((Get-Item -LiteralPath $picturePath).Length -ne 8192) {
+    throw "Hull graphics size is not 8192 bytes: $picturePath"
 }
 if ((Get-Item -LiteralPath $palettePath).Length -ne 32) {
     throw "Hull palette size is not 32 bytes: $palettePath"
@@ -189,6 +199,6 @@ hullPlaceholderPaletteEnd:
 
 Write-Output 'HULL_ASSET_BUILD=PASS'
 Write-Output "HULL_FRAMES=16"
-Write-Output "HULL_DIMENSIONS=16x16"
-Write-Output "HULL_GRAPHICS_BYTES=2048"
+Write-Output "HULL_DIMENSIONS=32x32"
+Write-Output "HULL_GRAPHICS_BYTES=8192"
 Write-Output "HULL_PALETTE_BYTES=32"

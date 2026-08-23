@@ -52,7 +52,8 @@ if ($LASTEXITCODE -ne 0) {
 $repoRoot = [System.IO.Path]::GetFullPath(($repoRootOutput | Select-Object -First 1).Trim())
 $hullAssetSource = Join-Path $repoRoot 'assets\hull_placeholder\hull_16dir.txt'
 $hullAssetGenerator = Join-Path $repoRoot 'tools\generate-hull-placeholder.ps1'
-foreach ($requiredProjectPath in @($hullAssetSource, $hullAssetGenerator)) {
+$inputHudGenerator = Join-Path $repoRoot 'tools\generate-input-hud.ps1'
+foreach ($requiredProjectPath in @($hullAssetSource, $hullAssetGenerator, $inputHudGenerator)) {
     if (-not (Test-Path -LiteralPath $requiredProjectPath -PathType Leaf)) {
         throw "Required S1-02 project file is missing: $requiredProjectPath"
     }
@@ -82,6 +83,10 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'src\main.c') -Destination $workSour
 
 & $hullAssetGenerator `
     -SourcePath $hullAssetSource `
+    -OutputDirectory $workRoot `
+    -Gfx4SnesPath $gfx4SnesPath
+
+& $inputHudGenerator `
     -OutputDirectory $workRoot `
     -Gfx4SnesPath $gfx4SnesPath
 

@@ -257,10 +257,10 @@ CURRENT GATE
 S1 — DRIVE
 
 CURRENT STATUS
-S1-02 — PASS / USER CONFIRMED 2026-08-23
+S1-02R — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S1-02 — 16-Direction Hull Presentation V0 — COMPLETE / STOP
+S1-02R — Hull Scale & Readability Revision — USER PLAYTEST REQUIRED
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -702,7 +702,7 @@ S1에서는 P1 Pad만 차체 이동에 연결한다. P2 Mouse의 실제 포탑 �
 
 # 16. Current S1 Direction — Active Gate Contract
 
-S1은 현재 `ACTIVE` 상태다. `S1-01 — Hull Movement V0`는 fixed-point 이동 기반의 기술 검증으로서 2026-08-23 `PASS / USER CONFIRMED`됐다. 그 기반을 유지한 `S1-01R — Tank Control Revision`은 direct forward/reverse throttle과 pivot-capable left/right hull rotation으로 구현됐으며, 사용자가 조작감과 기존 Mouse 입력 회귀를 확인해 2026-08-23 `PASS / USER CONFIRMED`됐다. Gameplay heading과 movement 값을 변경하지 않고 nearest-frame mapping으로 표시하는 `S1-02 — 16-Direction Hull Presentation V0`도 사용자가 CW/CCW 양방향 완전 회전의 `F00` 복귀, 이동 중 frame 누락 없음, 복합 이동, 후진과 후진 선회, 관성 중 회전, P1/P2 동시 입력에서 안정적인 sprite 표시를 확인해 2026-08-23 `PASS / USER CONFIRMED`됐다. 별도 작업 지시 없이 S1 Gate를 닫거나 후속 작업으로 진행하지 않는다.
+S1은 현재 `ACTIVE` 상태다. `S1-01 — Hull Movement V0`는 fixed-point 이동 기반의 기술 검증으로서 2026-08-23 `PASS / USER CONFIRMED`됐다. 그 기반을 유지한 `S1-01R — Tank Control Revision`은 direct forward/reverse throttle과 pivot-capable left/right hull rotation으로 구현됐으며, 사용자가 조작감과 기존 Mouse 입력 회귀를 확인해 2026-08-23 `PASS / USER CONFIRMED`됐다. Gameplay heading과 movement 값을 변경하지 않고 nearest-frame mapping으로 표시하는 `S1-02 — 16-Direction Hull Presentation V0`도 사용자가 CW/CCW 양방향 완전 회전의 `F00` 복귀, 이동 중 frame 누락 없음, 복합 이동, 후진과 후진 선회, 관성 중 회전, P1/P2 동시 입력에서 안정적인 sprite 표시를 확인해 2026-08-23 `PASS / USER CONFIRMED`됐다. `S1-02R — Hull Scale & Readability Revision`은 동일한 16방향 mapping과 승인된 movement 값을 유지하면서 32×32 Hull, 버튼형 방향 HUD와 compact diagnostic으로 구현됐으며 현재 `IMPLEMENTED / USER PLAYTEST REQUIRED` 상태다. 사용자 확인 전에는 S1-02R을 PASS로 승격하거나 S1 Gate를 닫지 않는다.
 
 S1의 초기 연구 범위는 다음과 같다.
 
@@ -1470,6 +1470,8 @@ Agent / Codex가 가능한 한 담당할 영역:
 13. S1-01R — Tank Control Revision — PASS / USER CONFIRMED 2026-08-23
 
 14. S1-02 — 16-Direction Hull Presentation V0 — PASS / USER CONFIRMED 2026-08-23
+
+15. S1-02R — Hull Scale & Readability Revision — IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
 S0는 MesenCE 2.2.1과 bsnes nightly의 사용자 확인, Delta iOS 추가 호환성 확인, 결정적 clean build와 ROM sanity를 근거로 `PASS / CLOSED`되었다.
@@ -1604,18 +1606,18 @@ CURRENT GATE:
 S1 — DRIVE
 
 CURRENT OBJECTIVE:
-Validate whether 16-direction hull presentation
-makes the existing tank controls visually readable.
+Validate whether a larger 16-direction hull and
+button-shaped input HUD improve readability.
 
 COMPLETED GATE:
 S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
 
 CURRENT STATUS:
-S1-02 — PASS / USER CONFIRMED 2026-08-23
+S1-02R — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK:
-S1-02 — 16-Direction Hull Presentation V0 — COMPLETE / STOP
+S1-02R — Hull Scale & Readability Revision — USER PLAYTEST REQUIRED
 
 DO NOT CLOSE S1 OR PROCEED TO S1-03/S2
-WITHOUT A SEPARATE TASK INSTRUCTION.
+WITHOUT USER PLAYTEST AND A SEPARATE TASK INSTRUCTION.
 ```

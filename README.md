@@ -2,7 +2,7 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S1 — DRIVE / S1-02 PASS / USER CONFIRMED 2026-08-23`
+> **현재 상태:** `S1 — DRIVE / S1-02R IMPLEMENTED / USER PLAYTEST REQUIRED`
 > **완료 Gate:** `S0 — BOOT & INPUT / PASS / CLOSED / USER GO APPROVED`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
@@ -85,12 +85,12 @@ C / 65816 / SNES Hardware
 
 ## S1 — DRIVE
 
-S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE입니다. S1-01, S1-01R, S1-02는 2026-08-23 각각 `PASS / USER CONFIRMED`됐습니다.
+S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE입니다. S1-01, S1-01R, S1-02는 2026-08-23 각각 `PASS / USER CONFIRMED`됐고, 현재 S1-02R은 `IMPLEMENTED / USER PLAYTEST REQUIRED` 상태입니다.
 
 현재 작업:
 
 ```text
-S1-02 — 16-Direction Hull Presentation V0 — COMPLETE / USER CONFIRMED
+S1-02R — Hull Scale & Readability Revision — USER PLAYTEST REQUIRED
 ```
 
 초기 S1 검증 범위:
@@ -124,7 +124,7 @@ P2 Mouse는 S0에서 기술적으로 검증됐지만 실제 포탑 조작 연결
 * Physical Cartridge
 * Custom Controller
 
-S1-02 범위를 넘어서는 위 기능은 구현하지 않았으며, 별도 작업 지시 전에는 S1-03/S2로 진행하지 않습니다.
+S1-02R 범위를 넘어서는 위 기능은 구현하지 않았으며, 사용자 확인과 별도 작업 지시 전에는 S1-03/S2로 진행하지 않습니다.
 
 ---
 
@@ -168,7 +168,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S1 — DRIVE — ACTIVE / S1-02 PASS
+## S1 — DRIVE — ACTIVE / S1-02R USER PLAYTEST REQUIRED
 
 플레이어 전차의 차체 이동을 구현합니다.
 
@@ -698,6 +698,29 @@ USER CONFIRMED 2026-08-23
 
 ---
 
+## S1-02R Hull Scale & Readability Revision
+
+S1-02의 16방향 source와 nearest-frame 계산 `((heading + 8) >> 4) & 0x0F`을 유지하면서 각 frame을 결정적으로 2배 확대해 32×32 placeholder Hull로 표시합니다. PVSnesLib OBJ 구성은 `OBJ_SIZE16_L32`이며 Hull은 large 32×32 OBJ 1개, yellow front marker와 UP/DOWN/LEFT/RIGHT HUD는 small 16×16 OBJ 5개를 사용합니다. 16방향 Hull graphics는 256 tiles/8,192 bytes입니다. `gfx4snes -s 32`가 만든 4×4 frame block의 16-tile-wide OBJ layout에 맞춰 runtime tile base를 `(frame / 4) * 64 + (frame % 4) * 4`로 선택합니다.
+
+최상단 HUD는 네 개의 16×16 둥근 사각형 버튼과 arrow pixel icon으로 구성됩니다. Idle은 짙은 녹색 배경과 밝은 녹색 테두리, pressed는 노란 배경과 밝은 노란 테두리 및 어두운 arrow로 반전됩니다. 각 `KEY_*` bit를 독립적으로 표시하므로 UP+DOWN 또는 LEFT+RIGHT conflict에서도 두 아이콘이 함께 pressed가 되고 `THR:N` 또는 `TURN:N`이 유지됩니다.
+
+Diagnostic은 최상단 `THR/TURN`, 그 아래 `HDG/FRM/SPD`, `P1/POS`, compact `P2:C/U/V/B/S` 순서로 압축했습니다. Hull 시작 중심은 `(128, 144)`입니다. P1 logical mapping, P2 Mouse polling, 16방향 heading/frame mapping과 승인된 여섯 movement tuning value는 유지했습니다. 현재 유효 범위가 Q8.8 16-bit에 완전히 들어가므로 position backing은 816-tcc의 32-bit stack-local codegen 민감성을 피하도록 static WRAM `u16` Q8.8로 저장하며, 실제 속도·가속·선회·boundary 결과는 기존 계약과 같습니다.
+
+두 번의 clean build가 warning/error 없이 같은 ROM을 생성했고 둘 다 `ROM_VERIFY=PASS`였습니다.
+
+```text
+100459bcd547174be004dfe5b2fe67db4c374bbaa08d6956b8229baca10f5a4a
+```
+
+MesenCE 2.2.1과 지정된 bsnes nightly에서 동일 ROM의 중앙 시작 위치, 32×32 Hull/front marker, 버튼형 HUD, compact P1/P2 diagnostic 부팅을 확인했습니다. 실제 눌림 강조, conflict, 전진/후진/제자리 회전/복합 선회와 P2 동시 입력 체감은 사용자 확인 전이므로 현재 상태는 다음과 같습니다.
+
+```text
+S1-02R IMPLEMENTED
+USER PLAYTEST REQUIRED
+```
+
+---
+
 # AI-Assisted Development
 
 이 프로젝트의 연구 주제 중 하나는 다음과 같습니다.
@@ -831,10 +854,10 @@ COMPLETED GATE
 S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
 
 CURRENT STATUS
-S1-02 — PASS / USER CONFIRMED 2026-08-23
+S1-02R — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S1-02 — 16-Direction Hull Presentation V0 — COMPLETE / STOP
+S1-02R — Hull Scale & Readability Revision — USER PLAYTEST REQUIRED
 
-Do not close S1 or proceed to S1-03/S2 without a separate task instruction.
+Do not close S1 or proceed to S1-03/S2 without user playtest and a separate task instruction.
 ```

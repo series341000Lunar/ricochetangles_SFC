@@ -183,7 +183,8 @@ extern unsigned char hullPlaceholderPalette, hullPlaceholderPaletteEnd;
 $assemblyText = @'
 .include "hdr.asm"
 
-.section ".rohullplaceholder" superfree
+.bank 5
+.section ".rohullplaceholder"
 
 hullPlaceholderTiles:
 .incbin "hull_placeholder.pic"

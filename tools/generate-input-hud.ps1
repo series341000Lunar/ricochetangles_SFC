@@ -126,6 +126,35 @@ for ($y = 0; $y -lt 7; $y++) {
     }
 }
 
+$cursorOriginX = 16
+$cursorOriginY = 32
+foreach ($offset in 1..5) {
+    Set-IndexedPixel -X ($cursorOriginX + 7) -Y ($cursorOriginY + $offset) -Color 8
+    Set-IndexedPixel -X ($cursorOriginX + 7) -Y ($cursorOriginY + 14 - $offset) -Color 8
+    Set-IndexedPixel -X ($cursorOriginX + $offset) -Y ($cursorOriginY + 7) -Color 8
+    Set-IndexedPixel -X ($cursorOriginX + 14 - $offset) -Y ($cursorOriginY + 7) -Color 8
+}
+
+$shellPattern = @(
+    '...##...',
+    '..####..',
+    '.######.',
+    '########',
+    '########',
+    '.######.',
+    '..####..',
+    '...##...'
+)
+$shellOriginX = 32
+$shellOriginY = 32
+for ($y = 0; $y -lt 8; $y++) {
+    for ($x = 0; $x -lt 8; $x++) {
+        if ($shellPattern[$y][$x] -eq '#') {
+            Set-IndexedPixel -X ($shellOriginX + 4 + $x) -Y ($shellOriginY + 4 + $y) -Color 7
+        }
+    }
+}
+
 $bmpPath = Join-Path $outputFullPath 'input_hud.bmp'
 $pixelOffset = 14 + 40 + (256 * 4)
 $imageSize = $width * $height
@@ -148,7 +177,7 @@ try {
     $writer.Write([int32]0)
     $writer.Write([int32]0)
     $writer.Write([uint32]256)
-    $writer.Write([uint32]8)
+    $writer.Write([uint32]9)
 
     $palette = @(
         @(0, 0, 0),
@@ -158,7 +187,8 @@ try {
         @(220, 180, 40),
         @(255, 235, 100),
         @(45, 38, 20),
-        @(255, 232, 64)
+        @(255, 232, 64),
+        @(80, 240, 255)
     )
     for ($index = 0; $index -lt 256; $index++) {
         if ($index -lt $palette.Count) {
@@ -222,7 +252,8 @@ extern unsigned char inputHudPalette, inputHudPaletteEnd;
 $assemblyText = @'
 .include "hdr.asm"
 
-.section ".roinputhud" superfree
+.bank 6
+.section ".roinputhud"
 
 inputHudTiles:
 .incbin "input_hud.pic"
@@ -242,3 +273,8 @@ Write-Output 'INPUT_HUD_STATES=IDLE,PRESSED'
 Write-Output 'INPUT_HUD_DIMENSIONS=16x16'
 Write-Output 'INPUT_HUD_GRAPHICS_BYTES=3072'
 Write-Output 'INPUT_HUD_PALETTE_BYTES=32'
+Write-Output 'AIM_CURSOR_DIMENSIONS=16x16'
+Write-Output 'AIM_CURSOR_GRAPHICS_BYTES=128'
+Write-Output 'PROJECTILE_VISUAL_DIMENSIONS=8x8'
+Write-Output 'PROJECTILE_TILE_FOOTPRINT=16x16'
+Write-Output 'PROJECTILE_GRAPHICS_BYTES=128'

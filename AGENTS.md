@@ -37,21 +37,23 @@ RicochetAngles
 현재 개발 상태:
 
 ```text
-S1 — DRIVE
+S2 — INDEPENDENT TURRET
 ```
 
 현재 목표는 게임 전체 구현이 아니다.
 
-S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. 현재 목표는 다음 S1 이동 검증이다.
+S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. S1도 같은 날 사용자 최종 확인과 GO 결정으로 `PASS / CLOSED`됐다. S2-01은 사용자 확인으로 PASS됐으며, 현재 목표는 S2-02의 주포 발사와 단순 Projectile 구조 검증이다.
 
 ```text
-PLAYER HULL
-→ D-PAD INPUT
-→ DESIRED HEADING
-→ LIMITED TURN RATE
-→ THROTTLE / ACCELERATION / INERTIA
-→ DECELERATION
-→ POSITION UPDATE
+P2 SNES MOUSE RELATIVE INPUT
+→ VIRTUAL AIM CURSOR
+→ TANK-TO-CURSOR VECTOR
+→ TURRET TARGET HEADING
+→ LIMITED TURRET TRAVERSE
+→ INDEPENDENT TURRET VISUAL
+→ P2 MOUSE LEFT PRESS EDGE
+→ CURRENT TURRET HEADING SHOT
+→ STRAIGHT PROJECTILE V0
 ```
 
 Local Development Environment Contract
@@ -95,7 +97,7 @@ C:\msys64\msys2_shell.cmd
 
 관련 실행파일과 환경을 찾을 때 다른 MSYS2 설치본을 먼저 탐색하지 않는다.
 
-S0에서 검증한 위 설치를 현재 S1에서도 기본 환경으로 사용한다.
+S0에서 검증한 위 설치를 현재 S2에서도 기본 환경으로 사용한다.
 
 위 경로가 존재하지 않거나 필요한 package가 없는 경우 임의로 다른 MSYS2/Cygwin/WSL 환경으로 우회하지 말고 현재 환경 상태와 필요한 package를 보고한다.
 
@@ -251,16 +253,16 @@ PVSNESLIB HOME IN MSYS2
 /c/snesdev/pvsneslib-4.6.0
 
 COMPLETED GATE
-S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED 2026-08-23
+S1 — DRIVE — PASS / CLOSED / USER GO APPROVED 2026-08-23
 
 CURRENT GATE
-S1 — DRIVE
+S2 — INDEPENDENT TURRET
 
 CURRENT STATUS
-S1-02R — PASS / USER CONFIRMED 2026-08-23
+S2-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S1-02R — Hull Scale & Readability Revision — COMPLETE / STOP
+S2-02 — Main Gun Fire & Projectile V0
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -563,7 +565,7 @@ DATE: 2026-08-23
 
 # 11. Initial Toolchain Direction
 
-S0에서 확정한 기본 기술 방향은 현재 S1에서도 유지한다.
+S0에서 확정한 기본 기술 방향은 현재 S2에서도 유지한다.
 
 ```text
 C 중심 개발
@@ -700,9 +702,9 @@ S1에서는 P1 Pad만 차체 이동에 연결한다. P2 Mouse의 실제 포탑 �
 
 ---
 
-# 16. Current S1 Direction — Active Gate Contract
+# 16. S1 Direction — Closed Gate Contract
 
-S1은 현재 `ACTIVE` 상태다. `S1-01 — Hull Movement V0`는 fixed-point 이동 기반의 기술 검증으로서 2026-08-23 `PASS / USER CONFIRMED`됐다. 그 기반을 유지한 `S1-01R — Tank Control Revision`은 direct forward/reverse throttle과 pivot-capable left/right hull rotation으로 구현됐으며, 사용자가 조작감과 기존 Mouse 입력 회귀를 확인해 2026-08-23 `PASS / USER CONFIRMED`됐다. Gameplay heading과 movement 값을 변경하지 않고 nearest-frame mapping으로 표시하는 `S1-02 — 16-Direction Hull Presentation V0`도 사용자가 CW/CCW 양방향 완전 회전의 `F00` 복귀, 이동 중 frame 누락 없음, 복합 이동, 후진과 후진 선회, 관성 중 회전, P1/P2 동시 입력에서 안정적인 sprite 표시를 확인해 2026-08-23 `PASS / USER CONFIRMED`됐다. `S1-02R — Hull Scale & Readability Revision`은 동일한 16방향 mapping과 승인된 movement 값을 유지하면서 32×32 Hull, 버튼형 방향 HUD와 compact diagnostic으로 구현됐으며, 사용자가 좌우 선회 시 확대 Hull sprite가 쪼개지지 않고 정상 표시되는 것을 확인해 2026-08-23 `PASS / USER CONFIRMED`됐다. S1 Gate는 별도 작업 지시 없이 닫지 않는다.
+`S1-01`, `S1-01R`, `S1-02`, `S1-02R`은 모두 2026-08-23 `PASS / USER CONFIRMED`됐다. 사용자는 최종적으로 32×32 Hull 가독성, CW/CCW, pivot, 전진/후진/복합 선회, 관성, P1/P2 회귀와 MesenCE/bsnes boot를 확인했고 S1에 GO를 승인했다. 따라서 S1은 `PASS / CLOSED / USER GO APPROVED 2026-08-23`이며 기존 이동 수치와 입력 구조는 S2의 Known Good Baseline이다.
 
 S1의 초기 연구 범위는 다음과 같다.
 
@@ -730,9 +732,9 @@ S1에서도 P2 Mouse gameplay, Turret, Aim Cursor, Fire, Projectile, Armor, Rico
 
 ---
 
-# 17. Future Independent Turret Direction — Reference Only
+# 17. Current S2 Direction — Active Gate Contract
 
-S1 이후의 독립 포탑 검증에서 다음 구조를 우선 검토한다.
+S2-01의 다음 독립 포탑 구조는 `PASS / USER CONFIRMED 2026-08-23`다.
 
 ```text
 Mouse ΔX / ΔY
@@ -742,6 +744,14 @@ Mouse ΔX / ΔY
 ```
 
 차체와 포탑의 내부 heading은 독립적으로 유지한다.
+
+S2-01은 Virtual Aim Cursor, integer vector-to-heading, limited traverse, 16-direction placeholder Turret와 compact diagnostic만 포함한다. P2 Mouse button은 raw diagnostic으로만 유지한다. Fire, Projectile, Reload, Recoil, Armor, Ricochet, Enemy, Map, Camera, Boss, final art와 audio는 범위 밖이다.
+
+S2-01은 구현 직후 `IMPLEMENTED / USER PLAYTEST REQUIRED`였으며, 사용자가 Cursor, 독립 Turret, Hull 이동과 P1/P2 회귀가 모두 정상이라고 확인해 2026-08-23 `PASS / USER CONFIRMED`로 승격됐다.
+
+현재 S2-02는 P2 SNES Mouse Left의 release 후 rising edge로만 발사하고, 발사 순간의 실제 `turret.heading`을 snapshot한 4-slot 정적 Projectile pool을 검증한다. 포탄은 Hull과 같은 Q8.8 위치 규칙, 기존 sin/cos LUT, 16 px muzzle offset, 4 px/frame 직선 속도와 18-frame 최소 cooldown을 사용한다. P2 Right는 raw diagnostic 전용이다.
+
+S2-02는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. MesenCE와 bsnes boot, clean/deterministic build와 정적 계약 검사는 완료했지만, 독립 발사 방향, 선회/이동 중 발사, muzzle 정렬과 press-edge feel은 사용자 확인 전까지 PASS가 아니다. Enemy, target/wall collision, Armor, Ricochet, Damage, ammo/reload system, Focus, Map, Camera, Boss, final art와 audio는 범위 밖이다.
 
 실제 조작감이 좋지 않다면 입력 방식을 변경할 수 있다.
 
@@ -932,7 +942,7 @@ one command
 * Build manifest
 * Deterministic output check
 
-S0에서는 필요한 최소 검증만 구현했다. S1에서도 현재 Gate에 필요한 검증만 추가한다.
+S0에서는 필요한 최소 검증만 구현했다. 현재 S2에서도 현재 Gate에 필요한 검증만 추가한다.
 
 전체 미래 검증 체계를 선제적으로 만들지 않는다.
 
@@ -1148,7 +1158,7 @@ HTML canonical Map/Data
 
 를 검토한다.
 
-현재 S1에서도 Map 작업을 하지 않는다.
+현재 S2에서도 Map 작업을 하지 않는다.
 
 ---
 
@@ -1166,7 +1176,7 @@ C — Immobilized Last Stand
 
 SFC에서도 세 Phase가 서로 다른 문제를 요구한다는 의미를 우선 보존한다.
 
-세부 Boss 규칙을 현재 S1 코드에 미리 넣지 않는다.
+세부 Boss 규칙을 현재 S2 코드에 미리 넣지 않는다.
 
 BOSS_01 Combat Contract를 `AGENTS.md`에 복제하지 않는다.
 
@@ -1218,7 +1228,7 @@ PC Emulator
 
 Standalone Physical Cartridge 제작은 Stage가 실제 하드웨어에서 완주 가능한 수준에 도달한 이후에만 검토한다.
 
-현재 S1에서는 PCB, Flash ROM, EPROM, Shell을 설계하지 않는다.
+현재 S2에서는 PCB, Flash ROM, EPROM, Shell을 설계하지 않는다.
 
 ---
 
@@ -1463,7 +1473,7 @@ Agent / Codex가 가능한 한 담당할 영역:
 
 10. GO — USER APPROVED 2026-08-23
 
-11. S1 — DRIVE — ACTIVE
+11. S1 — DRIVE — PASS / CLOSED / USER GO APPROVED 2026-08-23
 
 12. S1-01 — Hull Movement V0 — PASS / USER CONFIRMED 2026-08-23
 
@@ -1472,11 +1482,17 @@ Agent / Codex가 가능한 한 담당할 영역:
 14. S1-02 — 16-Direction Hull Presentation V0 — PASS / USER CONFIRMED 2026-08-23
 
 15. S1-02R — Hull Scale & Readability Revision — PASS / USER CONFIRMED 2026-08-23
+
+16. S2 — INDEPENDENT TURRET — ACTIVE
+
+17. S2-01 — Virtual Aim & Independent Turret V0 — PASS / USER CONFIRMED 2026-08-23
+
+18. S2-02 — Main Gun Fire & Projectile V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
 S0는 MesenCE 2.2.1과 bsnes nightly의 사용자 확인, Delta iOS 추가 호환성 확인, 결정적 clean build와 ROM sanity를 근거로 `PASS / CLOSED`되었다.
 
-S0 종료 시점의 ROM/build/input 구현은 `KNOWN GOOD S0 BASELINE`이다. S1 작업 중 Boot 또는 Input 회귀가 발생하면 이 상태와 비교하며, S1 구현을 이유로 정상 동작하는 S0 build/input 구조를 불필요하게 재작성하지 않는다.
+S0 종료 시점의 ROM/build/input 구현은 `KNOWN GOOD S0 BASELINE`이다. 이후 Gate에서 Boot 또는 Input 회귀가 발생하면 이 상태와 비교하며, 새 구현을 이유로 정상 동작하는 S0 build/input 구조를 불필요하게 재작성하지 않는다.
 
 실제 Super Famicom은 계속 `UNVERIFIED`이며 향후 Real Hardware Gate에서 별도로 검증한다.
 
@@ -1484,21 +1500,22 @@ S0 종료 시점의 ROM/build/input 구현은 `KNOWN GOOD S0 BASELINE`이다. S1
 
 # 45. Explicitly Forbidden Premature Work
 
-현재 S1 범위에서는 다음 작업을 선행하지 않는다.
+현재 S2-02 범위에서는 다음 작업을 선행하지 않는다.
 
 ```text
-NO P2 MOUSE GAMEPLAY
-NO TURRET CONTROL
-NO AIM CURSOR
-NO FIRE
-NO PROJECTILE
+NO ENEMY OR TARGET
+NO COLLISION
+NO RELOAD SYSTEM BEYOND THE MINIMAL COOLDOWN
+NO RECOIL
 NO ARMOR
 NO RICOCHET
 NO ENEMY
 NO MAP
+NO CAMERA
 NO STAGE
 NO BOSS
 NO FINAL ART
+NO 32-DIRECTION UPGRADE
 NO AUDIO
 NO PHYSICAL CART
 NO CUSTOM CONTROLLER
@@ -1603,21 +1620,21 @@ STATUS:
 EXPERIMENTAL / DROP-OK
 
 CURRENT GATE:
-S1 — DRIVE
+S2 — INDEPENDENT TURRET
 
 CURRENT OBJECTIVE:
-Validate whether a larger 16-direction hull and
-button-shaped input HUD improve readability.
+Validate P2 Mouse Left press-edge fire and a straight
+Projectile whose direction snapshots the current Turret heading.
 
 COMPLETED GATE:
-S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
+S1 — DRIVE — PASS / CLOSED / USER GO APPROVED 2026-08-23
 
 CURRENT STATUS:
-S1-02R — PASS / USER CONFIRMED 2026-08-23
+S2-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK:
-S1-02R — Hull Scale & Readability Revision — COMPLETE / STOP
+S2-02 — Main Gun Fire & Projectile V0
 
-DO NOT CLOSE S1 OR PROCEED TO S1-03/S2
-WITHOUT A SEPARATE TASK INSTRUCTION.
+DO NOT MARK S2-02 PASS OR PROCEED TO S2 CLOSE, S3,
+ENEMY, COLLISION, ARMOR OR RICOCHET WITHOUT USER CONFIRMATION.
 ```

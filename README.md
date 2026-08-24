@@ -2,8 +2,8 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S1 — DRIVE / S1-02R PASS / USER CONFIRMED 2026-08-23`
-> **완료 Gate:** `S0 — BOOT & INPUT / PASS / CLOSED / USER GO APPROVED`
+> **현재 상태:** `S2 — INDEPENDENT TURRET / S2-02 IMPLEMENTED / USER PLAYTEST REQUIRED`
+> **완료 Gate:** `S1 — DRIVE / PASS / CLOSED / USER GO APPROVED 2026-08-23`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
 > **Repository:** `series341000Lunar/ricochetangles_SFC`
@@ -83,48 +83,48 @@ C / 65816 / SNES Hardware
 
 # 현재 개발 단계
 
-## S1 — DRIVE
+## S2 — INDEPENDENT TURRET
 
-S0 — BOOT & INPUT은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 현재 Gate는 S1 — DRIVE입니다. S1-01, S1-01R, S1-02와 S1-02R은 2026-08-23 각각 `PASS / USER CONFIRMED`됐습니다.
+S0 — BOOT & INPUT과 S1 — DRIVE는 2026-08-23 사용자 GO 결정으로 각각 `PASS / CLOSED`됐습니다. S1-01, S1-01R, S1-02와 S1-02R의 이력과 승인된 이동 수치는 Known Good Baseline으로 유지합니다.
 
 현재 작업:
 
 ```text
-S1-02R — Hull Scale & Readability Revision — COMPLETE / USER CONFIRMED
+S2-02 — Main Gun Fire & Projectile V0
+IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
-초기 S1 검증 범위:
+현재 S2-02 검증 범위:
 
 ```text
-PLAYER HULL
-→ D-PAD INPUT
-→ DESIRED HEADING
-→ LIMITED TURN RATE
-→ THROTTLE
-→ ACCELERATION
-→ INERTIA
-→ DECELERATION
-→ POSITION UPDATE
+P2 SNES MOUSE RELATIVE INPUT
+→ VIRTUAL AIM CURSOR
+→ TANK-TO-CURSOR VECTOR
+→ TURRET TARGET HEADING
+→ LIMITED TURRET TRAVERSE
+→ INDEPENDENT TURRET VISUAL
+→ P2 MOUSE LEFT PRESS EDGE
+→ CURRENT TURRET HEADING SHOT
+→ STRAIGHT PROJECTILE V0
 ```
 
-### S1에서 아직 하지 않는 것
+### S2-01에서 하지 않는 것
 
-P2 Mouse는 S0에서 기술적으로 검증됐지만 실제 포탑 조작 연결은 후속 Gate에서 수행합니다. S1에서는 다음을 아직 구현하지 않습니다.
+P2 Mouse 좌우 button은 raw diagnostic만 유지합니다. 이번 작업에는 다음을 구현하지 않습니다.
 
-* P2 Mouse gameplay
-* Turret control
-* Aim cursor
 * Fire
 * Projectile
+* Reload / Recoil / Muzzle flash
 * Armor / Ricochet
 * Enemy
-* Stage
+* Map / Camera / Stage
 * Boss
+* 32-direction upgrade
 * Final art / Audio
 * Physical Cartridge
 * Custom Controller
 
-S1-02R 범위를 넘어서는 위 기능은 구현하지 않았으며, 별도 작업 지시 전에는 S1-03/S2로 진행하지 않습니다.
+사용자가 S2-01의 Cursor, 독립 Turret, Hull 이동과 입력 회귀가 모두 정상이라고 확인했습니다. S2-02 구현 지시에 따라 주포/Projectile V0를 추가했으며, 사용자 조작 확인 전까지 S2-02를 PASS로 승격하지 않습니다.
 
 ---
 
@@ -168,7 +168,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S1 — DRIVE — ACTIVE / S1-02R PASS
+## S1 — DRIVE — PASS / CLOSED
 
 플레이어 전차의 차체 이동을 구현합니다.
 
@@ -186,7 +186,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S2 — INDEPENDENT TURRET
+## S2 — INDEPENDENT TURRET — ACTIVE / S2-02 USER PLAYTEST REQUIRED
 
 초기 입력 후보:
 
@@ -624,7 +624,7 @@ Delta iOS는 추가 호환성 참고 환경입니다. 동일 S0 ROM 계열의 RO
 * `UNKNOWN`: Delta iOS P2 SNES Mouse — 현재 환경에서 사용할 수 없음
 * `UNVERIFIED`: 실제 Super Famicom 하드웨어
 
-S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 이 시점의 ROM/build/input 구현과 위 SHA-256은 `KNOWN GOOD S0 BASELINE`이며, S1 작업 중 Boot/Input 회귀가 발생하면 이 상태와 비교합니다. 정상 동작하는 S0 build/input 구조는 S1 구현을 이유로 불필요하게 재작성하지 않습니다.
+S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`됐습니다. 이 시점의 ROM/build/input 구현과 위 SHA-256은 `KNOWN GOOD S0 BASELINE`이며, 이후 Gate에서 Boot/Input 회귀가 발생하면 이 상태와 비교합니다. 정상 동작하는 S0 build/input 구조는 새 구현을 이유로 불필요하게 재작성하지 않습니다.
 
 ## S1-01 Hull Movement V0
 
@@ -721,6 +721,50 @@ USER CONFIRMED 2026-08-23
 
 ---
 
+## S2-01 Virtual Aim & Independent Turret V0
+
+P2 index 1의 기존 `mouse_x[1]` / `mouse_y[1]` 상대 이동을 screen-space Virtual Aim Cursor에 누적합니다. `+X=RIGHT`, `+Y=DOWN`, `AIM_GAIN=1`, clamp는 `X=8..247`, `Y=64..215`, 초기 위치는 Hull 전방 48 px입니다. `abs(dx)+abs(dy)<5`에서는 이전 목표각을 유지합니다. P2 좌우 button과 sensitivity는 기존 raw diagnostic에만 남아 있으며 gameplay action은 없습니다.
+
+Turret은 Hull과 별개의 `u8` world/screen heading과 target heading을 가집니다. Tank-to-Cursor vector는 32개의 midpoint tangent threshold와 5-step integer cross-product search로 octant를 결정한 뒤 quadrant를 재구성합니다. Runtime division과 floating point는 사용하지 않으며 자동 검사에서 `-64..64` vector의 최대 오차는 1 heading unit, cardinal heading은 정확히 일치했습니다. Turret은 shortest path를 프레임당 최대 `TURRET_TURN_RATE=4`로 추종하고 visual은 Hull과 같은 `((heading+8)>>4)&0x0F` nearest 16-direction mapping을 사용합니다.
+
+Turret placeholder는 16×16, 16방향, 64 tiles/2,048 graphics bytes와 5색/32-byte OBJ palette입니다. Cursor는 16×16이며 기존 3,072-byte Input HUD sheet 안의 128 graphics bytes를 사용합니다. OAM은 Hull large OBJ 1개, Turret small OBJ 1개, Cursor small OBJ 1개로 player-related 3개이며 marker와 4개 P1 HUD를 포함한 전체 active OBJ는 8개입니다. Turret은 Hull 중심에 고정되고 priority 3, Hull은 priority 2입니다.
+
+관련 VRAM word allocation은 Hull `0x0000`(8,192 bytes, tiles 0..255), HUD/Cursor `0x1000`(3,072 bytes, marker tile 320, cursor tile 322), Turret `0x1600`(2,048 bytes, tiles 352..415), BG graphics `0x3000`입니다. ROM asset은 Hull bank 05, HUD/Cursor bank 06, Turret bank 07에 배치하며 build가 source/runtime code와 PVSnesLib RTS routine을 bank 00에 유지하는지 검사합니다.
+
+`scripts\build.ps1` clean build는 compiler warning/error 0, angle/LUT 검사, bank-layout 검사와 `ROM_VERIFY=PASS`를 통과했습니다. MesenCE 2.2.1과 지정된 bsnes nightly에서 Hull, Turret, Cursor와 diagnostic 화면의 ROM boot를 확인했습니다. 최종 상태는 다음과 같습니다.
+
+```text
+S2-01 PASS
+USER CONFIRMED 2026-08-23
+ROM SHA-256: 4bff8d00cef06f584bb4b5469a5f00692e94fe7541cc4cb543b2dbe017a415a3
+REAL HARDWARE: UNVERIFIED
+```
+
+사용자는 Cursor 이동, 독립 Turret 동작, Hull 이동과 P1/P2 입력 회귀가 모두 정상이라고 확인했습니다. 따라서 S2-01은 `PASS / USER CONFIRMED 2026-08-23`입니다. 실제 Super Famicom은 계속 `UNVERIFIED`이며, 이 확인은 S2 Gate 종료나 S2-02 시작 승인이 아닙니다.
+
+---
+
+## S2-02 Main Gun Fire & Projectile V0
+
+P2 SNES Mouse Left의 held 값 `mousePressed[1] & mouse_L`에서 release를 한 번 관찰한 뒤 0→1 rising edge만 발사 요청으로 사용합니다. 부팅 시 이미 눌린 상태는 발사로 처리하지 않으며, P2 Right는 기존 raw diagnostic 외 gameplay action이 없습니다.
+
+Projectile은 동적 할당 없는 4-slot 정적 pool입니다. 각 slot은 `active`, Q8.8 `positionX/Y`, Q8.8 `velocityX/Y`, 발사 순간의 `heading`을 보관합니다. Muzzle은 Hull 중심에서 실제 현재 `turret.heading`의 forward vector로 16 px 전진한 위치이고, 기존 `sin256`/`cos256` LUT를 재사용해 4 px/frame 직선 속도를 정합니다. Turret target이나 Hull heading은 발사각으로 사용하지 않습니다. Cooldown은 18 frames이며 pool이 가득 차면 요청을 무시합니다.
+
+포탄 표식은 기존 Input HUD sheet의 예약 영역에 생성한 bright yellow 8×8 visual입니다. 전역 OBJ 설정 때문에 투명 영역을 포함한 tile footprint는 16×16이며 포탄 하나당 small OBJ 1개입니다. 최대 4발일 때 Hull 1 + Turret 1 + Cursor 1 + Projectile 4 = player-side 7 OBJ이고, front marker 1 + P1 HUD 4까지 포함한 전체 active 최대치는 12 OBJ입니다.
+
+화면 밖 정리는 중심 X `4..251`, gameplay Y `56..223`을 벗어나거나 Q8.8 덧셈이 넘치는 즉시 deactivate합니다. Build는 projectile edge/heading/LUT 속도/OAM 계약, 기존 S2 angle과 bank layout, ROM sanity를 검사합니다. MesenCE 2.2.1과 지정된 bsnes nightly에서 `S2-02`, Hull, Turret, Cursor, `GUN F0 CD00 SH0 H00`의 깨끗한 boot를 확인했고 bsnes 화면은 60 FPS를 표시했습니다.
+
+```text
+S2-02 IMPLEMENTED
+USER PLAYTEST REQUIRED
+ROM SHA-256: 761eba62d93adc5e344a16ae8dc173c15ccc6c5fabd47dfa826e89ba8d00270a
+REAL HARDWARE: UNVERIFIED
+```
+
+사용자는 MesenCE에서 Hull/Turret 독립 발사 방향, Turret traverse 중 실제 포신 방향 발사, 이동/후진/pivot 중 발사, press-edge/held/cooldown, 8방향 진행과 muzzle 정렬을 직접 확인해야 합니다. 이 확인 전에는 S2-02가 PASS가 아니며 S2를 닫거나 S3로 진행하지 않습니다.
+
+---
+
 # AI-Assisted Development
 
 이 프로젝트의 연구 주제 중 하나는 다음과 같습니다.
@@ -804,7 +848,7 @@ AMMO
 
 현재 가장 중요한 목표는 단순합니다.
 
-> **SFC에서 RicochetAngles다운 차체 이동이 성립하는지 확인합니다.**
+> **P1 차체와 P2 Mouse 포탑의 독립 조작이 SFC에서 성립하는지 확인합니다.**
 
 ---
 
@@ -844,20 +888,20 @@ STATUS
 EXPERIMENTAL / DROP-OK
 
 CURRENT GATE
-S1 — DRIVE
+S2 — INDEPENDENT TURRET
 
 CURRENT OBJECTIVE
-Validate hull movement with limited turning,
-acceleration, inertia and deceleration.
+Validate press-edge main-gun fire whose straight
+Projectile snapshots the current Turret heading.
 
 COMPLETED GATE
-S0 — BOOT & INPUT — PASS / CLOSED / USER GO APPROVED
+S1 — DRIVE — PASS / CLOSED / USER GO APPROVED 2026-08-23
 
 CURRENT STATUS
-S1-02R — PASS / USER CONFIRMED 2026-08-23
+S2-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S1-02R — Hull Scale & Readability Revision — COMPLETE / STOP
+S2-02 — Main Gun Fire & Projectile V0
 
-Do not close S1 or proceed to S1-03/S2 without a separate task instruction.
+Do not mark S2-02 PASS or proceed to S2 close, S3, Enemy, Collision, Armor or Ricochet without user confirmation.
 ```

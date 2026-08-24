@@ -52,10 +52,14 @@ if ($LASTEXITCODE -ne 0) {
 $repoRoot = [System.IO.Path]::GetFullPath(($repoRootOutput | Select-Object -First 1).Trim())
 $hullAssetSource = Join-Path $repoRoot 'assets\hull_placeholder\hull_16dir.txt'
 $hullAssetGenerator = Join-Path $repoRoot 'tools\generate-hull-placeholder.ps1'
+$turretAssetSource = Join-Path $repoRoot 'assets\turret_placeholder\turret_16dir.txt'
+$turretAssetGenerator = Join-Path $repoRoot 'tools\generate-turret-placeholder.ps1'
 $inputHudGenerator = Join-Path $repoRoot 'tools\generate-input-hud.ps1'
-foreach ($requiredProjectPath in @($hullAssetSource, $hullAssetGenerator, $inputHudGenerator)) {
+$s2AngleVerifier = Join-Path $repoRoot 'tools\verify-s2-angle.ps1'
+$s2ProjectileVerifier = Join-Path $repoRoot 'tools\verify-s2-projectile.ps1'
+foreach ($requiredProjectPath in @($hullAssetSource, $hullAssetGenerator, $turretAssetSource, $turretAssetGenerator, $inputHudGenerator, $s2AngleVerifier, $s2ProjectileVerifier)) {
     if (-not (Test-Path -LiteralPath $requiredProjectPath -PathType Leaf)) {
-        throw "Required S1-02 project file is missing: $requiredProjectPath"
+        throw "Required S2 project file is missing: $requiredProjectPath"
     }
 }
 
@@ -71,6 +75,7 @@ $romRoot = Join-Path $buildRoot 'rom'
 $romName = 'ricochetangles_s0_hello.sfc'
 $builtRom = Join-Path $workRoot $romName
 $finalRom = Join-Path $romRoot $romName
+$symbolPath = Join-Path $workRoot 'ricochetangles_s0_hello.sym'
 
 if (Test-Path -LiteralPath $buildRoot) {
     Remove-Item -LiteralPath $buildRoot -Recurse -Force
@@ -89,6 +94,14 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'src\main.c') -Destination $workSour
 & $inputHudGenerator `
     -OutputDirectory $workRoot `
     -Gfx4SnesPath $gfx4SnesPath
+
+& $turretAssetGenerator `
+    -SourcePath $turretAssetSource `
+    -OutputDirectory $workRoot `
+    -Gfx4SnesPath $gfx4SnesPath
+
+& $s2AngleVerifier -SourcePath (Join-Path $repoRoot 'src\main.c')
+& $s2ProjectileVerifier -SourcePath (Join-Path $repoRoot 'src\main.c')
 
 $originalMsystem = [System.Environment]::GetEnvironmentVariable('MSYSTEM', 'Process')
 $originalPvsneslibHome = [System.Environment]::GetEnvironmentVariable('PVSNESLIB_HOME', 'Process')
@@ -113,6 +126,80 @@ if ($makeExitCode -ne 0) {
 if (-not (Test-Path -LiteralPath $builtRom)) {
     throw "Build reported success but ROM is missing: $builtRom"
 }
+
+if (-not (Test-Path -LiteralPath $symbolPath -PathType Leaf)) {
+    throw "Build symbol file is missing: $symbolPath"
+}
+
+$symbols = @{}
+foreach ($line in Get-Content -LiteralPath $symbolPath) {
+    if ($line -match '^([0-9A-Fa-f]{8})\s+(.+)$') {
+        $symbols[$Matches[2]] = [Convert]::ToUInt32($Matches[1], 16)
+    }
+}
+
+$sameBankRuntimeSymbols = @(
+    'main',
+    'consoleInitDefaultText',
+    'bgSetGfxPtr',
+    'bgSetMapPtr',
+    'oamInit',
+    'oamInitGfxAttr',
+    'dmaCopyVram',
+    'dmaCopyCGram',
+    'oamSet',
+    'oamSetEx',
+    'oamSetGfxOffset',
+    'oamSetXY',
+    'oamSetVisible',
+    'setMode',
+    'bgSetDisable',
+    'consoleDrawText',
+    'initMouse',
+    'WaitForVBlank',
+    'setScreenOn'
+)
+foreach ($symbolName in $sameBankRuntimeSymbols) {
+    if (-not $symbols.ContainsKey($symbolName)) {
+        throw "Required runtime symbol is missing: $symbolName"
+    }
+    $symbolBank = $symbols[$symbolName] -shr 16
+    if ($symbolBank -ne 0) {
+        throw ("Runtime symbol {0} escaped code bank 00 (actual bank {1:X2}); PVSnesLib RTS calls must remain same-bank." -f $symbolName, $symbolBank)
+    }
+}
+
+$sourceRomSymbols = $symbols.GetEnumerator() | Where-Object {
+    $_.Key.StartsWith('tccs_src/main.asm_', [System.StringComparison]::Ordinal) -and
+    (($_.Value -shr 16) -ne 0x7E)
+}
+foreach ($symbol in $sourceRomSymbols) {
+    $symbolBank = $symbol.Value -shr 16
+    if ($symbolBank -ne 0) {
+        throw ("Compiled source symbol {0} escaped code bank 00 (actual bank {1:X2})." -f $symbol.Key, $symbolBank)
+    }
+}
+
+$assetBanks = @{
+    hullPlaceholderTiles = 5
+    inputHudTiles = 6
+    turretPlaceholderTiles = 7
+}
+foreach ($entry in $assetBanks.GetEnumerator()) {
+    if (-not $symbols.ContainsKey($entry.Key)) {
+        throw "Required asset symbol is missing: $($entry.Key)"
+    }
+    $actualBank = $symbols[$entry.Key] -shr 16
+    if ($actualBank -ne $entry.Value) {
+        throw ("Asset symbol {0} is in bank {1:X2}; expected bank {2:X2}." -f $entry.Key, $actualBank, $entry.Value)
+    }
+}
+
+Write-Output 'S2_BANK_LAYOUT_VERIFY=PASS'
+Write-Output 'CODE_BANK=00'
+Write-Output 'HULL_ASSET_BANK=05'
+Write-Output 'INPUT_HUD_ASSET_BANK=06'
+Write-Output 'TURRET_ASSET_BANK=07'
 
 Copy-Item -LiteralPath $builtRom -Destination $finalRom
 

@@ -1,0 +1,18 @@
+# 16-direction placeholder turret barrel vectors.
+# Heading contract: 00=right, 04=down, 08=left, 0C=up.
+FRAME 00 7 0
+FRAME 01 6 3
+FRAME 02 5 5
+FRAME 03 3 6
+FRAME 04 0 7
+FRAME 05 -3 6
+FRAME 06 -5 5
+FRAME 07 -6 3
+FRAME 08 -7 0
+FRAME 09 -6 -3
+FRAME 0A -5 -5
+FRAME 0B -3 -6
+FRAME 0C 0 -7
+FRAME 0D 3 -6
+FRAME 0E 5 -5
+FRAME 0F 6 -3

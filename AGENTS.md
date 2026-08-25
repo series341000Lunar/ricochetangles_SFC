@@ -256,9 +256,10 @@ S3 — CORE COMBAT
 
 CURRENT STATUS
 S3-01 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-01A-R1 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S3-01 — Static Enemy Target & Projectile Hit V0
+S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -753,9 +754,15 @@ S2-02는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. MesenCE와 bsnes boot, clean
 
 사용자는 P1 SELECT의 `AIM:M`/`AIM:P` 전환, `AIM:P`의 P2 D-pad 8방향 Turret Aim과 P2 B Main Gun Fire를 직접 확인했다. 따라서 S2-02A는 `PASS / USER CONFIRMED 2026-08-25`다. 이 확인과 사용자 GO 결정으로 S2는 `PASS / CLOSED / USER GO APPROVED 2026-08-25`다. P1+P2 동시 조작과 Aim Mode 전환 accidental-fire 방지는 이후 Gate의 지속 regression 항목으로 유지한다. 이 문장은 사용자가 확인하지 않은 세부 시나리오를 과거 시점의 `USER CONFIRMED`로 확장하지 않는다.
 
-현재 S3-01은 정지한 Enemy Tank 1대에 대한 Player Projectile 충돌 foundation만 검증한다. Enemy는 위치, heading, HP 3, active와 짧은 hit blink 상태를 가지며 움직임, AI, 포탑, 발사 기능은 없다. 충돌은 Projectile 중심점과 회전하지 않는 단순 AABB로 처리하고, 유효한 hit는 shell을 즉시 비활성화한 뒤 damage 1을 정확히 한 번 적용한다. HP 0에서 Enemy OBJ를 숨기며 P1 START는 DEV/diagnostic reset으로 Enemy와 Projectile pool을 초기화한다.
+현재 S3-01은 정지한 Enemy Tank 1대에 대한 Player Projectile 충돌 foundation만 검증한다. Enemy는 위치, heading, HP 3, active와 짧은 hit blink 상태를 가지며 움직임, AI, 포탑, 발사 기능은 없다. 충돌은 Projectile 중심점과 회전하지 않는 단순 AABB로 처리하고, 유효한 hit는 shell을 즉시 비활성화한 뒤 damage 1을 정확히 한 번 적용한다. HP 0에서 Enemy OBJ를 숨기며 P1 SELECT는 DEV/diagnostic reset으로 Enemy와 Projectile pool을 초기화한다.
 
 S3-01 구현 직후 상태는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. 사용자가 Miss, Hit, 3-hit destruction, Reset, Mouse hit와 PAD2 hit를 직접 확인하기 전에는 PASS로 승격하지 않는다. Armor Face, Impact Angle, Ricochet, Non-Penetration과 Penetration은 S3-01 범위 밖이며 사용자 승인 없이 S3-02로 진행하지 않는다.
+
+현재 S3-01A-R1은 P1 START Runtime Control Menu를 제공한다. 메뉴의 두 항목은 `DRIVE PC-LIKE/STICK`과 `AIM MOUSE/P2 PAD`이며 제목은 `RicochetAngles`, 하단 footer는 `CHANNEL A BNC`다. 기본값은 PC-LIKE와 MOUSE이고 선택값은 현재 실행 세션 동안 유지된다. STICK은 P1 D-pad를 8방향 world heading으로 해석해 기존 `TURN_RATE=2`와 가속/관성을 그대로 사용한다. P2 PAD Aim과 STICK Drive는 반대 축 동시 입력을 축별 neutral로 만드는 같은 작은 direction resolver를 공유한다.
+
+메뉴가 열린 동안 Hull, Turret, Aim, Projectile, Enemy, hit flash와 fire cooldown gameplay update는 정지한다. START로 복귀할 때 fire input을 disarm하여 해당 장치의 발사 버튼 release 전 accidental shot을 막는다. START가 메뉴 전용이 됐으므로 S3-01 DEV Enemy Reset은 P1 SELECT로 이동했다. 기존 S0/S1 verbose raw diagnostic은 Bank 00 절감을 위해 compact HUD로 축소했지만 현재 Drive/Aim, Enemy HP, Hull/Turret heading, fire held와 active shell count는 남겼다.
+
+S3-01A 초안은 Bank 00 free 28 bytes로 `oamInitGfxAttr`을 Bank 01로 밀어 final build가 실패했다. R1은 application-side 중복 방향 해석과 과거 verbose diagnostic formatting을 정리하여 Bank 00 free 5,301 bytes(16.18%)를 확보했고 `oamInitGfxAttr`을 Bank 00 `00:E922`에 복구했다. LoROM/SlowROM mapping, compiler option과 PVSnesLib 4.6.0은 변경하지 않았다. S3-01A-R1은 `IMPLEMENTED / USER PLAYTEST REQUIRED`이며 START menu usability, 두 Drive/Aim mode의 실제 조작감, pause/resume과 accidental-fire 방지는 사용자 확인 전 PASS가 아니다. 사용자가 이전 ROM의 Arcade Cabinet boot와 START 존재를 확인했지만 새 ROM은 다시 `ARCADE CABINET / USER PLAYTEST REQUIRED`이며 SELECT는 cabinet의 정식 경로로 가정하지 않는다. Arcade Cabinet은 실제 Super Famicom 검증이 아니다.
 
 실제 조작감이 좋지 않다면 입력 방식을 변경할 수 있다.
 
@@ -1498,6 +1505,8 @@ Agent / Codex가 가능한 한 담당할 영역:
 20. S3 — CORE COMBAT — ACTIVE
 
 21. S3-01 — Static Enemy Target & Projectile Hit V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
+
+22. S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage — IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
 S0는 MesenCE 2.2.1과 bsnes nightly의 사용자 확인, Delta iOS 추가 호환성 확인, 결정적 clean build와 ROM sanity를 근거로 `PASS / CLOSED`되었다.
@@ -1644,9 +1653,10 @@ S2 — INDEPENDENT TURRET — PASS / CLOSED / USER GO APPROVED 2026-08-25
 
 CURRENT STATUS:
 S3-01 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-01A-R1 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK:
-S3-01 — Static Enemy Target & Projectile Hit V0
+S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage
 
 DO NOT MARK S3-01 PASS OR PROCEED TO S3-02, ARMOR FACE,
 IMPACT ANGLE, RICOCHET, NON-PEN OR PENETRATION WITHOUT USER CONFIRMATION.

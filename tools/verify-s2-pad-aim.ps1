@@ -19,10 +19,11 @@ function Assert-SourcePattern {
 
 Assert-SourcePattern 'typedef\s+enum\s*\{\s*AIM_MODE_MOUSE\s*=\s*0\s*,\s*AIM_MODE_PAD2\s*=\s*1\s*\}\s*AimMode\s*;' 'AimMode enum contract is missing or reordered.'
 Assert-SourcePattern 'aimMode\s*=\s*AIM_MODE_MOUSE\s*;' 'Default aim mode must be Mouse.'
-Assert-SourcePattern 'padDown\s*=\s*padsDown\(0\)\s*;' 'P1 SELECT mode toggle must use PVSnesLib padsDown(0).'
-Assert-SourcePattern 'if\s*\(\(padDown\s*&\s*KEY_SELECT\)\s*==\s*0\)' 'P1 SELECT is not the mode-toggle edge.'
+Assert-SourcePattern 'padDown\s*=\s*padsDown\(0\)\s*;' 'P1 menu controls must use PVSnesLib padsDown(0).'
+Assert-SourcePattern 'if\s*\(\(padDown\s*&\s*\(KEY_LEFT\s*\|\s*KEY_RIGHT\s*\|\s*KEY_A\)\)\s*!=\s*0\)' 'Aim option must use P1 menu press edges.'
 Assert-SourcePattern 'aimMode\s*=\s*aimMode\s*==\s*AIM_MODE_MOUSE\s*\?\s*AIM_MODE_PAD2\s*:\s*AIM_MODE_MOUSE\s*;' 'Aim mode does not alternate between Mouse and Pad2.'
 Assert-SourcePattern 'resetMainGunInput\(\)\s*;' 'Aim mode switching does not reset and disarm the fire edge state.'
+Assert-SourcePattern 'if\s*\(\(padDown\s*&\s*KEY_SELECT\)\s*!=\s*0\)\s*\{\s*initializeProjectiles\(\)\s*;' 'P1 SELECT must be diagnostic reset only, not an Aim quick-toggle.'
 Assert-SourcePattern 'pad2\s*=\s*padsCurrent\(1\)\s*;' 'P2 Standard Pad is not read through padsCurrent(1).'
 Assert-SourcePattern 'initMouse\(MOUSE_SLOW\)\s*;' 'Known-good P2 SNES Mouse initialization was removed.'
 Assert-SourcePattern 'pad2Gameplay\s*=\s*mouseConnected\s*==\s*0\s*\?\s*pad2\s*:\s*0\s*;' 'Mouse protocol data is not blocked from Pad2 gameplay interpretation.'
@@ -30,17 +31,17 @@ Assert-SourcePattern '#define\s+PAD_AIM_INDICATOR_DISTANCE\s+48\b' 'Pad2 directi
 Assert-SourcePattern 'cos256\(turret->targetHeading\)\s*\*\s*PAD_AIM_INDICATOR_DISTANCE' 'Pad2 indicator X is not derived from the target heading.'
 Assert-SourcePattern 'sin256\(turret->targetHeading\)\s*\*\s*PAD_AIM_INDICATOR_DISTANCE' 'Pad2 indicator Y is not derived from the target heading.'
 Assert-SourcePattern 'updateInputHudSprites\(pad\)\s*;' 'Existing P1 D-pad OAM HUD path changed.'
-Assert-SourcePattern 'resolveHullInput\(pad,\s*&hull\)\s*;' 'P1 Hull input no longer has its independent path.'
+Assert-SourcePattern 'resolveHullInputPcLike\(pad,\s*&hull\)\s*;' 'P1 PC-like Hull input no longer has its independent path.'
 Assert-SourcePattern 'updateTurretTargetFromPad2\(pad2Gameplay,\s*&turret\)\s*;' 'P2 aim no longer has its independent path.'
 Assert-SourcePattern '#define\s+AIM_GAIN\s+1\b' 'Known-good Mouse AIM_GAIN changed.'
 Assert-SourcePattern '#define\s+TURRET_TURN_RATE\s+4\b' 'Known-good turret traverse rate changed.'
 
 $resolverMatch = [regex]::Match(
     $source,
-    'static\s+void\s+updateTurretTargetFromPad2\s*\([^)]*\)\s*\{(?<body>.*?)\}\s*static\s+void\s+updateTurretHeading',
+    'static\s+u8\s+resolvePadHeading\s*\([^)]*\)\s*\{(?<body>.*?)\}\s*static\s+void\s+updateTurretTargetFromPad2',
     [System.Text.RegularExpressions.RegexOptions]::Singleline)
 if (-not $resolverMatch.Success) {
-    throw 'Unable to isolate the Pad2 direction resolver.'
+    throw 'Unable to isolate the shared Pad direction resolver.'
 }
 $resolver = $resolverMatch.Groups['body'].Value
 if ([regex]::IsMatch($resolver, '\bswitch\s*\(')) {
@@ -154,7 +155,8 @@ if (-not (Invoke-FireFrame -Held $true -State $fireState)) {
 
 Write-Output 'S2_PAD_AIM_VERIFY=PASS'
 Write-Output 'AIM_MODE_DEFAULT=MOUSE'
-Write-Output 'AIM_MODE_TOGGLE=P1_SELECT_DOWN'
+Write-Output 'AIM_MODE_CONTROL=START_MENU'
+Write-Output 'SELECT_AIM_QUICK_TOGGLE=REMOVED'
 Write-Output 'PAD2_API=padsCurrent(1)'
 Write-Output 'PAD2_HEADINGS=00,20,40,60,80,A0,C0,E0'
 Write-Output 'PAD2_OPPOSITE_AXIS_POLICY=INDEPENDENT_NEUTRAL'

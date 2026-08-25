@@ -2,7 +2,7 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S3 — CORE COMBAT / S3-01 IMPLEMENTED / USER PLAYTEST REQUIRED`
+> **현재 상태:** `S3 — CORE COMBAT / S3-01A-R1 IMPLEMENTED / USER PLAYTEST REQUIRED`
 > **완료 Gate:** `S2 — INDEPENDENT TURRET / PASS / CLOSED / USER GO APPROVED 2026-08-25`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
@@ -90,7 +90,7 @@ S0 — BOOT & INPUT과 S1 — DRIVE는 2026-08-23 사용자 GO 결정으로 각�
 현재 작업:
 
 ```text
-S3-01 — Static Enemy Target & Projectile Hit V0
+S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage
 IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
@@ -781,7 +781,7 @@ REAL HARDWARE: UNVERIFIED
 
 Player Projectile이 이동한 뒤 중심점이 Enemy 중심 기준 half-width/height 13 px의 회전하지 않는 26×26 AABB 안에 있으면 shell을 즉시 비활성화하고 damage 1과 Hit Count 1을 정확히 한 번 적용합니다. HP 0이면 Enemy를 inactive로 만들고 OBJ를 숨깁니다. 유효 hit는 6-frame blink로 표시하며 `EN HP3 HIT00` diagnostic이 HP/누적 hit를 보여줍니다.
 
-P1 START는 DEV/diagnostic reset입니다. Enemy 위치, heading, HP 3, active와 Hit Count 0을 복원하고 Player Projectile pool을 비웁니다. 이 입력은 최종 gameplay mapping이 아닙니다. Collision은 Aim Mode를 모르며 Mouse와 P2 Pad가 같은 Projectile path를 사용합니다. Armor Face, Impact Angle, Ricochet, Non-Penetration, Penetration과 Ammo Type은 구현하지 않았습니다.
+P1 SELECT는 DEV/diagnostic reset입니다. Enemy 위치, heading, HP 3, active와 Hit Count 0을 복원하고 Player Projectile pool을 비웁니다. 이 입력은 최종 gameplay mapping이 아닙니다. Collision은 Aim Mode를 모르며 Mouse와 P2 Pad가 같은 Projectile path를 사용합니다. Armor Face, Impact Angle, Ricochet, Non-Penetration, Penetration과 Ammo Type은 구현하지 않았습니다.
 
 ```text
 S3-01 IMPLEMENTED
@@ -792,6 +792,27 @@ REAL HARDWARE: UNVERIFIED
 자동검증은 Enemy 초기 상태, 직선 hit, miss, shell 1개당 1 damage, 3-hit destruction, reset, 기존 shell speed 4, S2 Aim/Fire regression과 OAM 비중복을 검사합니다. 사용자가 Miss, Hit, 3-hit destruction, Reset, Mouse hit와 PAD2 hit를 직접 확인하기 전에는 S3-01을 PASS로 승격하지 않습니다.
 
 두 번의 clean build가 compiler warning/error 0, `S3_TARGET_VERIFY=PASS`, `ROM_VERIFY=PASS`를 통과했고 동일한 262,144-byte ROM을 생성했습니다. SHA-256은 두 번 모두 `31bca17b059e1e57c7729f47f2662913b661755c9887152fcb07ac2e774d2d82`였으며 Bank 00은 1,624 bytes(4.96%)가 남았습니다. MesenCE와 bsnes nightly에서 `S3-01`, Player Hull/Turret/Cursor, Enemy Tank와 `EN HP3 HIT00`의 정상 boot/표시를 확인했고 bsnes는 60 FPS였습니다. Boot 시 active shell이 없으므로 새 ROM의 Projectile 표시, 실제 hit 결과와 조작 regression은 사용자 수동 검증 전까지 `UNVERIFIED`입니다.
+
+---
+
+## S3-01A-R1 Runtime Control Menu / Bank 00 Salvage
+
+P1 START로 gameplay를 정지하고 두 항목만 있는 Runtime Control Menu를 엽니다. 제목은 `RicochetAngles`, 메뉴는 `DRIVE PC-LIKE/STICK`, `AIM MOUSE/P2 PAD`, `START : RESUME`를 표시하며 gameplay 최하단에는 `CHANNEL A BNC`를 유지합니다. 기본값은 PC-LIKE와 MOUSE이고 선택값은 현재 실행 세션 동안 유지됩니다.
+
+PC-LIKE는 기존 Forward/Reverse/Hull Turn 계약을 그대로 사용합니다. STICK은 P1 D-pad의 8방향을 world heading `00/20/40/60/80/A0/C0/E0`으로 해석하고 기존 `TURN_RATE=2`, acceleration과 inertia로 선회하며 전진합니다. P2 PAD Aim과 STICK Drive는 반대 축 동시 입력을 축별 neutral로 처리하는 같은 direction resolver를 공유합니다. START menu가 열린 동안 Hull, Turret, Aim, Projectile, Enemy, hit flash와 fire cooldown은 갱신되지 않습니다. Resume 시 fire input을 disarm하고 release를 기다려 accidental shot을 막습니다. START가 메뉴 전용이 됐으므로 DEV Enemy Reset은 P1 SELECT입니다.
+
+Bank 00 free 28 bytes였던 미완성 초안은 verbose S0/S1 diagnostic formatting과 중복 입력 해석을 정리해 5,301 bytes(16.18%) free로 복구했습니다. `oamInitGfxAttr`은 Bank 00 `00:E922`에 배치됐습니다. compact HUD에는 현재 Drive/Aim, Enemy HP, Hull/Turret heading, fire held와 active shell count를 유지합니다. LoROM/SlowROM, PVSnesLib 4.6.0, compiler options와 기존 gameplay 수치는 바꾸지 않았습니다.
+
+최종 clean build 2회는 compiler warning/error 0, `S2_PAD_AIM_VERIFY=PASS`, `S3_TARGET_VERIFY=PASS`, `S3_CONTROL_MENU_VERIFY=PASS`, `S2_BANK_LAYOUT_VERIFY=PASS`와 `ROM_VERIFY=PASS`를 모두 통과했습니다. 두 번 모두 262,144-byte ROM과 SHA-256 `a023111225107a8f184e2115e376fe4178412230f84fbb5d170a71f76c93a95f`를 생성했습니다. ROM은 LoROM/SlowROM, ROM only, SRAM none이며 enhancement chip을 사용하지 않습니다.
+
+```text
+S3-01 — IMPLEMENTED / existing status preserved
+S3-01A-R1 — IMPLEMENTED / USER PLAYTEST REQUIRED
+ARCADE CABINET — USER PLAYTEST REQUIRED FOR THIS ROM
+REAL SUPER FAMICOM — UNVERIFIED
+```
+
+MesenCE에서 최신 ROM boot, gameplay, `RicochetAngles` START menu, Resume와 footer를 확인했습니다. bsnes nightly에서는 최신 ROM boot, gameplay, footer와 60 FPS를 확인했습니다. 자동 입력이 두 에뮬레이터의 host Raw Input mapping을 완전히 재현하지 못하므로 PC-LIKE/STICK, Mouse/P2 PAD, menu pause feel과 no-accidental-shot은 정적 검증과 별개로 사용자 수동 검증이 필요합니다. 사용자가 이전 ROM의 Arcade Cabinet boot와 START 존재를 확인했지만 이 ROM의 menu, STICK/P2 PAD twin-stick, fire와 Resume는 다시 확인해야 합니다. Cabinet의 SELECT는 정식 gameplay 경로로 전제하지 않으며 Cabinet은 실제 Super Famicom 검증이 아닙니다.
 
 ---
 
@@ -929,9 +950,10 @@ S2 — INDEPENDENT TURRET — PASS / CLOSED / USER GO APPROVED 2026-08-25
 
 CURRENT STATUS
 S3-01 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-01A-R1 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S3-01 — Static Enemy Target & Projectile Hit V0
+S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage
 
 Do not mark S3-01 PASS or proceed to S3-02, Armor Face, Impact Angle, Ricochet, Non-Penetration or Penetration without user confirmation.
 ```

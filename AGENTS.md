@@ -42,16 +42,15 @@ S2 — INDEPENDENT TURRET
 
 현재 목표는 게임 전체 구현이 아니다.
 
-S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. S1도 같은 날 사용자 최종 확인과 GO 결정으로 `PASS / CLOSED`됐다. S2-01은 사용자 확인으로 PASS됐으며, 현재 목표는 S2-02의 주포 발사와 단순 Projectile 구조 검증이다.
+S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. S1도 같은 날 사용자 최종 확인과 GO 결정으로 `PASS / CLOSED`됐다. S2-01은 사용자 확인으로 PASS됐으며, 현재 목표는 S2-02A의 Mouse/P2 Standard Pad 대체 조준 입력 구조 검증이다.
 
 ```text
-P2 SNES MOUSE RELATIVE INPUT
-→ VIRTUAL AIM CURSOR
-→ TANK-TO-CURSOR VECTOR
+P2 SNES MOUSE OR P2 STANDARD PAD
+→ DEVICE-SPECIFIC AIM INTERPRETATION
 → TURRET TARGET HEADING
 → LIMITED TURRET TRAVERSE
 → INDEPENDENT TURRET VISUAL
-→ P2 MOUSE LEFT PRESS EDGE
+→ COMMON FIRE-HELD SIGNAL
 → CURRENT TURRET HEADING SHOT
 → STRAIGHT PROJECTILE V0
 ```
@@ -259,10 +258,10 @@ CURRENT GATE
 S2 — INDEPENDENT TURRET
 
 CURRENT STATUS
-S2-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S2-02A — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S2-02 — Main Gun Fire & Projectile V0
+S2-02A — Alternate Aim Input / P2 Pad V0
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -752,6 +751,10 @@ S2-01은 구현 직후 `IMPLEMENTED / USER PLAYTEST REQUIRED`였으며, 사용�
 현재 S2-02는 P2 SNES Mouse Left의 release 후 rising edge로만 발사하고, 발사 순간의 실제 `turret.heading`을 snapshot한 4-slot 정적 Projectile pool을 검증한다. 포탄은 Hull과 같은 Q8.8 위치 규칙, 기존 sin/cos LUT, 16 px muzzle offset, 4 px/frame 직선 속도와 18-frame 최소 cooldown을 사용한다. P2 Right는 raw diagnostic 전용이다.
 
 S2-02는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. MesenCE와 bsnes boot, clean/deterministic build와 정적 계약 검사는 완료했지만, 독립 발사 방향, 선회/이동 중 발사, muzzle 정렬과 press-edge feel은 사용자 확인 전까지 PASS가 아니다. Enemy, target/wall collision, Armor, Ricochet, Damage, ammo/reload system, Focus, Map, Camera, Boss, final art와 audio는 범위 밖이다.
+
+현재 S2-02A는 기존 Mouse 조준/발사를 그대로 보존하면서 P2 Standard Pad를 대체 조준 장치로 추가한다. 기본 Mode는 Mouse이며 P1 SELECT press edge로 Pad2와 전환한다. Pad2 D-pad는 축별로 독립 해석한 8방향 target heading과 Hull 기준 48 px indicator를 사용하고, P2 B는 Mouse Left와 같은 장치 독립 `fireHeld` 경로로 들어간다. Mode 전환은 발사를 disarm하고 release를 관찰하기 전까지 재발사를 막는다.
+
+S2-02A는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. clean/deterministic build, ROM sanity, 정적 8방향/상반축/fire 계약, MesenCE의 Mouse/Standard Controller 구성 boot와 bsnes boot는 확인했다. P2 Pad host mapping이 비어 있어 8방향 조준, twin-stick 동시 입력, P2 B 발사와 Mouse 조작 회귀는 사용자 확인 전까지 PASS가 아니다. 실제 Super Famicom도 계속 `UNVERIFIED`다.
 
 실제 조작감이 좋지 않다면 입력 방식을 변경할 수 있다.
 
@@ -1488,6 +1491,8 @@ Agent / Codex가 가능한 한 담당할 영역:
 17. S2-01 — Virtual Aim & Independent Turret V0 — PASS / USER CONFIRMED 2026-08-23
 
 18. S2-02 — Main Gun Fire & Projectile V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
+
+19. S2-02A — Alternate Aim Input / P2 Pad V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
 S0는 MesenCE 2.2.1과 bsnes nightly의 사용자 확인, Delta iOS 추가 호환성 확인, 결정적 clean build와 ROM sanity를 근거로 `PASS / CLOSED`되었다.
@@ -1500,7 +1505,7 @@ S0 종료 시점의 ROM/build/input 구현은 `KNOWN GOOD S0 BASELINE`이다. �
 
 # 45. Explicitly Forbidden Premature Work
 
-현재 S2-02 범위에서는 다음 작업을 선행하지 않는다.
+현재 S2-02A 범위에서는 다음 작업을 선행하지 않는다.
 
 ```text
 NO ENEMY OR TARGET
@@ -1623,18 +1628,18 @@ CURRENT GATE:
 S2 — INDEPENDENT TURRET
 
 CURRENT OBJECTIVE:
-Validate P2 Mouse Left press-edge fire and a straight
-Projectile whose direction snapshots the current Turret heading.
+Compare Mouse and P2 Standard Pad aim through one shared
+Turret, fire-edge and straight Projectile path.
 
 COMPLETED GATE:
 S1 — DRIVE — PASS / CLOSED / USER GO APPROVED 2026-08-23
 
 CURRENT STATUS:
-S2-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S2-02A — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK:
-S2-02 — Main Gun Fire & Projectile V0
+S2-02A — Alternate Aim Input / P2 Pad V0
 
-DO NOT MARK S2-02 PASS OR PROCEED TO S2 CLOSE, S3,
+DO NOT MARK S2-02A PASS OR PROCEED TO S2 CLOSE, S3,
 ENEMY, COLLISION, ARMOR OR RICOCHET WITHOUT USER CONFIRMATION.
 ```

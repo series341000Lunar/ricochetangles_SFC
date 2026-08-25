@@ -2,7 +2,7 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S2 — INDEPENDENT TURRET / S2-02 IMPLEMENTED / USER PLAYTEST REQUIRED`
+> **현재 상태:** `S2 — INDEPENDENT TURRET / S2-02A IMPLEMENTED / USER PLAYTEST REQUIRED`
 > **완료 Gate:** `S1 — DRIVE / PASS / CLOSED / USER GO APPROVED 2026-08-23`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
@@ -90,20 +90,19 @@ S0 — BOOT & INPUT과 S1 — DRIVE는 2026-08-23 사용자 GO 결정으로 각�
 현재 작업:
 
 ```text
-S2-02 — Main Gun Fire & Projectile V0
+S2-02A — Alternate Aim Input / P2 Pad V0
 IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
-현재 S2-02 검증 범위:
+현재 S2-02A 검증 범위:
 
 ```text
-P2 SNES MOUSE RELATIVE INPUT
-→ VIRTUAL AIM CURSOR
-→ TANK-TO-CURSOR VECTOR
+P2 SNES MOUSE OR P2 STANDARD PAD
+→ DEVICE-SPECIFIC AIM INTERPRETATION
 → TURRET TARGET HEADING
 → LIMITED TURRET TRAVERSE
 → INDEPENDENT TURRET VISUAL
-→ P2 MOUSE LEFT PRESS EDGE
+→ COMMON FIRE-HELD SIGNAL
 → CURRENT TURRET HEADING SHOT
 → STRAIGHT PROJECTILE V0
 ```
@@ -186,7 +185,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S2 — INDEPENDENT TURRET — ACTIVE / S2-02 USER PLAYTEST REQUIRED
+## S2 — INDEPENDENT TURRET — ACTIVE / S2-02A USER PLAYTEST REQUIRED
 
 초기 입력 후보:
 
@@ -765,6 +764,24 @@ REAL HARDWARE: UNVERIFIED
 
 ---
 
+## S2-02A Alternate Aim Input / P2 Pad V0
+
+기본 `AIM:M`은 기존 P2 SNES Mouse의 누적 Virtual Aim, Mouse Left 발사와 `AIM_GAIN=1`을 그대로 사용합니다. P1 SELECT press edge는 `AIM:P`와 상호 전환하며, Mode 변경 직후 발사 입력을 disarm해 현재 장치의 발사 버튼을 한 번 놓기 전에는 발사하지 않습니다. Port 2가 선택된 Mode와 다른 장치일 때 gameplay 입력은 0으로 차단합니다.
+
+`AIM:P`는 `padsCurrent(1)`의 D-pad 각 bit를 두 축으로 독립 해석합니다. 목표각은 `RIGHT=00`, `DOWN-RIGHT=20`, `DOWN=40`, `DOWN-LEFT=60`, `LEFT=80`, `UP-LEFT=A0`, `UP=C0`, `UP-RIGHT=E0`입니다. `UP+DOWN`과 `LEFT+RIGHT`는 해당 축만 중립화하며, 두 축이 모두 중립이면 기존 target heading을 유지합니다. 표시기는 Hull 중심에서 target heading 방향 48 px에 두며 기존 Mouse `AimState`를 수정하지 않습니다.
+
+Mouse Left와 P2 Pad B는 장치 독립적인 `fireHeld`로 변환된 뒤 같은 release/rising-edge, 18-frame cooldown, 현재 `turret.heading` snapshot과 4-slot Projectile pool을 사용합니다. Build는 8방향/상반축/idle hold/mode safety/공통 발사 계약과 기존 angle, projectile, bank layout, ROM sanity를 함께 검사합니다.
+
+```text
+S2-02A IMPLEMENTED
+USER PLAYTEST REQUIRED
+REAL HARDWARE: UNVERIFIED
+```
+
+MesenCE에서 P2 Mouse 구성과 P2 Standard Controller 구성의 동일 ROM boot 및 장치 판별을 확인했고, 설정은 원래 P2 Mouse로 복원했습니다. P2 Pad의 host key mapping은 비어 있었으므로 8방향 조준, P1+P2 동시 입력, P2 B 발사는 사용자가 mapping 후 직접 확인해야 합니다. Mouse 조준/발사와 S2-02 조작감도 사용자 확인 전까지 PASS로 기록하지 않습니다. bsnes nightly에서는 동일 ROM의 `S2-02A`, `AIM:M`, Hull/Turret/Cursor와 diagnostic 화면 부팅을 확인했습니다.
+
+---
+
 # AI-Assisted Development
 
 이 프로젝트의 연구 주제 중 하나는 다음과 같습니다.
@@ -891,17 +908,17 @@ CURRENT GATE
 S2 — INDEPENDENT TURRET
 
 CURRENT OBJECTIVE
-Validate press-edge main-gun fire whose straight
-Projectile snapshots the current Turret heading.
+Compare Mouse and P2 Standard Pad aim through one shared
+Turret, fire-edge and straight Projectile path.
 
 COMPLETED GATE
 S1 — DRIVE — PASS / CLOSED / USER GO APPROVED 2026-08-23
 
 CURRENT STATUS
-S2-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S2-02A — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S2-02 — Main Gun Fire & Projectile V0
+S2-02A — Alternate Aim Input / P2 Pad V0
 
-Do not mark S2-02 PASS or proceed to S2 close, S3, Enemy, Collision, Armor or Ricochet without user confirmation.
+Do not mark S2-02A PASS or proceed to S2 close, S3, Enemy, Collision, Armor or Ricochet without user confirmation.
 ```

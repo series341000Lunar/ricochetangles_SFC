@@ -28,16 +28,25 @@ Assert-SourcePattern 'u8\s+shotHeading\s*=\s*turret->heading\s*;' 'Projectile he
 Assert-SourcePattern 'projectiles\[index\]\.heading\s*=\s*shotHeading\s*;' 'Projectile heading snapshot is not stored in the pool.'
 Assert-SourcePattern 'velocityX\s*=\s*\(s16\)\(directionX\s*\*\s*SHELL_SPEED_PIXELS\)' 'Projectile X velocity does not use the turret forward vector.'
 Assert-SourcePattern 'velocityY\s*=\s*\(s16\)\(directionY\s*\*\s*SHELL_SPEED_PIXELS\)' 'Projectile Y velocity does not use the turret forward vector.'
-Assert-SourcePattern 'leftHeld\s*!=\s*0\s*&&\s*leftWasHeld\s*==\s*0\s*&&\s*fireInputArmed\s*!=\s*0' 'Left mouse fire is not armed rising-edge triggered.'
-Assert-SourcePattern 'if\s*\(leftHeld\s*==\s*0\)\s*\{\s*fireInputArmed\s*=\s*1\s*;' 'Main gun is not armed by an observed released state.'
-Assert-SourcePattern 'previousMouseButtons\s*=\s*mouseButtons\s*;' 'Previous mouse state is not retained for edge detection.'
-Assert-SourcePattern 'mouseButtons\s*&\s*mouse_L' 'P2 SNES Mouse Left is not used for main-gun input.'
+Assert-SourcePattern 'static\s+u8\s+updateMainGun\s*\(\s*u8\s+fireHeld\s*,' 'Main gun does not accept a device-independent fire-held signal.'
+Assert-SourcePattern 'fireHeld\s*!=\s*0\s*&&\s*fireWasHeld\s*==\s*0\s*&&\s*fireInputArmed\s*!=\s*0' 'Main gun is not armed rising-edge triggered.'
+Assert-SourcePattern 'if\s*\(fireHeld\s*==\s*0\)\s*\{\s*fireInputArmed\s*=\s*1\s*;' 'Main gun is not armed by an observed released state.'
+Assert-SourcePattern 'previousFireHeld\s*=\s*fireHeld\s*;' 'Previous generic fire state is not retained for edge detection.'
+Assert-SourcePattern 'mouseConnected\s*!=\s*0\s*&&\s*\(mouseButtons\s*&\s*mouse_L\)' 'P2 SNES Mouse Left is not mapped to the generic fire signal.'
+Assert-SourcePattern 'pad2Gameplay\s*&\s*KEY_B' 'P2 Standard Pad B is not mapped to the generic fire signal.'
 Assert-SourcePattern 'PROJECTILE_OAM_BASE\s+32\b' 'Projectile OAM range must begin after the S2-01 sprites.'
 Assert-SourcePattern 'INPUT_HUD_SHELL_TILE\s*\(INPUT_HUD_TILE_BASE\s*\+\s*68\)' 'Projectile tile must use the reserved HUD tile region.'
 Assert-SourcePattern 'pixelX\s*<\s*PROJECTILE_MIN_X\s*\|\|\s*pixelX\s*>\s*PROJECTILE_MAX_X' 'Projectile X cleanup bounds are missing.'
 
-if ([regex]::IsMatch($source, 'spawnProjectile\s*\([^)]*mouse_R', [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
-    throw 'P2 SNES Mouse Right must not feed projectile spawning.'
+$gunMatch = [regex]::Match(
+    $source,
+    'static\s+u8\s+updateMainGun\s*\([^)]*\)\s*\{(?<body>.*?)\}\s*static\s+void\s+resolveHullInput',
+    [System.Text.RegularExpressions.RegexOptions]::Singleline)
+if (-not $gunMatch.Success) {
+    throw 'Unable to isolate the generic main-gun subsystem.'
+}
+if ([regex]::IsMatch($gunMatch.Groups['body'].Value, 'mouse_|mouseButtons|KEY_B|KEY_')) {
+    throw 'Main-gun subsystem must not know the active input device or logical button constant.'
 }
 
 $quarterSinMatch = [regex]::Match(
@@ -85,7 +94,7 @@ if (($oamIds | Measure-Object -Maximum).Maximum -ne 44) {
 }
 
 Write-Output 'S2_PROJECTILE_VERIFY=PASS'
-Write-Output 'FIRE_INPUT=P2_MOUSE_LEFT_RISING_EDGE'
+Write-Output 'FIRE_INPUT=DEVICE_INDEPENDENT_RISING_EDGE'
 Write-Output 'PROJECTILE_POOL_SIZE=4'
 Write-Output 'FIRE_COOLDOWN_FRAMES=18'
 Write-Output 'MUZZLE_DISTANCE_PIXELS=16'

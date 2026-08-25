@@ -25,6 +25,7 @@
 #define AIM_GAIN 1
 #define AIM_DEADZONE 5
 #define INITIAL_AIM_DISTANCE 48
+#define PAD_AIM_INDICATOR_DISTANCE 48
 #define AIM_MIN_X 8
 #define AIM_MAX_X 247
 #define AIM_MIN_Y 64
@@ -89,21 +90,28 @@ typedef struct
     u8 active;
 } ProjectileState;
 
+typedef enum
+{
+    AIM_MODE_MOUSE = 0,
+    AIM_MODE_PAD2 = 1
+} AimMode;
+
 static const char hexDigits[] = "0123456789ABCDEF";
 static HullState hull;
 static TurretState turret;
 static AimState aim;
+static AimMode aimMode;
 static ProjectileState projectiles[MAX_PLAYER_SHELLS];
 static u8 fireCooldown;
-static u8 previousMouseButtons;
+static u8 previousFireHeld;
 static u8 fireInputArmed;
 static u8 lastShotHeading;
 static char controlStatusLine[13];
 static char hullStatusLine[20];
 static char turretStatusLine[18];
-static char aimStatusLine[12];
+static char aimStatusLine[20];
 static char inputStatusLine[25];
-static char mouseButtonStatusLine[6];
+static char aimInputStatusLine[9];
 static char gunStatusLine[20];
 
 static const s16 quarterSin[65] = {
@@ -272,7 +280,7 @@ static u8 vectorToHeading(s16 dx, s16 dy)
     return dy >= 0 ? (u8)(128 - baseAngle) : (u8)(128 + baseAngle);
 }
 
-static void updateTurretTarget(const HullState *hull, TurretState *turret)
+static void updateTurretTargetFromMouse(const HullState *hull, TurretState *turret)
 {
     s16 centerX = (s16)(hull->positionX >> FIXED_SHIFT);
     s16 centerY = (s16)(hull->positionY >> FIXED_SHIFT);
@@ -284,6 +292,42 @@ static void updateTurretTarget(const HullState *hull, TurretState *turret)
         return;
     }
     turret->targetHeading = vectorToHeading(dx, dy);
+}
+
+static void updateTurretTargetFromPad2(u16 pad2, TurretState *turret)
+{
+    u8 upHeld = (pad2 & KEY_UP) != 0;
+    u8 downHeld = (pad2 & KEY_DOWN) != 0;
+    u8 leftHeld = (pad2 & KEY_LEFT) != 0;
+    u8 rightHeld = (pad2 & KEY_RIGHT) != 0;
+    s8 horizontal = 0;
+    s8 vertical = 0;
+
+    if (leftHeld != rightHeld)
+    {
+        horizontal = leftHeld != 0 ? -1 : 1;
+    }
+    if (upHeld != downHeld)
+    {
+        vertical = upHeld != 0 ? -1 : 1;
+    }
+
+    if (horizontal > 0)
+    {
+        turret->targetHeading = vertical < 0 ? 0xE0 : (vertical > 0 ? 0x20 : 0x00);
+    }
+    else if (horizontal < 0)
+    {
+        turret->targetHeading = vertical < 0 ? 0xA0 : (vertical > 0 ? 0x60 : 0x80);
+    }
+    else if (vertical < 0)
+    {
+        turret->targetHeading = 0xC0;
+    }
+    else if (vertical > 0)
+    {
+        turret->targetHeading = 0x40;
+    }
 }
 
 static void updateTurretHeading(TurretState *turret)
@@ -408,10 +452,26 @@ static u8 spawnProjectile(const HullState *hull, const TurretState *turret)
     return 0;
 }
 
-static u8 updateMainGun(u8 mouseButtons, const HullState *hull, const TurretState *turret)
+static void resetMainGunInput(void)
 {
-    u8 leftHeld = (mouseButtons & mouse_L) != 0;
-    u8 leftWasHeld = (previousMouseButtons & mouse_L) != 0;
+    previousFireHeld = 0;
+    fireInputArmed = 0;
+}
+
+static void updateAimMode(u16 padDown)
+{
+    if ((padDown & KEY_SELECT) == 0)
+    {
+        return;
+    }
+
+    aimMode = aimMode == AIM_MODE_MOUSE ? AIM_MODE_PAD2 : AIM_MODE_MOUSE;
+    resetMainGunInput();
+}
+
+static u8 updateMainGun(u8 fireHeld, const HullState *hull, const TurretState *turret)
+{
+    u8 fireWasHeld = previousFireHeld;
     u8 fired = 0;
 
     if (fireCooldown > 0)
@@ -419,12 +479,12 @@ static u8 updateMainGun(u8 mouseButtons, const HullState *hull, const TurretStat
         fireCooldown--;
     }
 
-    if (leftHeld == 0)
+    if (fireHeld == 0)
     {
         fireInputArmed = 1;
     }
 
-    if (leftHeld != 0 && leftWasHeld == 0 && fireInputArmed != 0 && fireCooldown == 0)
+    if (fireHeld != 0 && fireWasHeld == 0 && fireInputArmed != 0 && fireCooldown == 0)
     {
         fired = spawnProjectile(hull, turret);
         if (fired != 0)
@@ -434,7 +494,7 @@ static u8 updateMainGun(u8 mouseButtons, const HullState *hull, const TurretStat
         }
     }
 
-    previousMouseButtons = mouseButtons;
+    previousFireHeld = fireHeld;
     return fired;
 }
 
@@ -632,10 +692,23 @@ static void updateTurretAndCursorSprites(const HullState *hull, const TurretStat
 {
     s16 centerX = (s16)(hull->positionX >> FIXED_SHIFT);
     s16 centerY = (s16)(hull->positionY >> FIXED_SHIFT);
+    s16 cursorX;
+    s16 cursorY;
+
+    if (aimMode == AIM_MODE_MOUSE)
+    {
+        cursorX = (s16)aim.x;
+        cursorY = (s16)aim.y;
+    }
+    else
+    {
+        cursorX = centerX + ((cos256(turret->targetHeading) * PAD_AIM_INDICATOR_DISTANCE) >> FIXED_SHIFT);
+        cursorY = centerY + ((sin256(turret->targetHeading) * PAD_AIM_INDICATOR_DISTANCE) >> FIXED_SHIFT);
+    }
 
     oamSetGfxOffset(TURRET_OAM_ID, turretVisualTile(headingVisualFrame(turret->heading)));
     oamSetXY(TURRET_OAM_ID, centerX - 8, centerY - 8);
-    oamSetXY(CURSOR_OAM_ID, (s16)aim.x - 8, (s16)aim.y - 8);
+    oamSetXY(CURSOR_OAM_ID, cursorX - 8, cursorY - 8);
 }
 
 static void updateProjectileSprites(void)
@@ -725,22 +798,51 @@ static void formatTurretStatusLine(const TurretState *turret, char *output)
     output[16] = '\0';
 }
 
-static void formatAimStatusLine(char *output)
+static void formatAimStatusLine(const TurretState *turret, char *output)
 {
     output[0] = 'A';
-    output[1] = 'X';
-    output[2] = ':';
-    formatHex8((u8)aim.x, &output[3]);
+    output[1] = 'I';
+    output[2] = 'M';
+    output[3] = ':';
+    output[4] = aimMode == AIM_MODE_MOUSE ? 'M' : 'P';
     output[5] = ' ';
-    output[6] = 'A';
-    output[7] = 'Y';
-    output[8] = ':';
-    formatHex8((u8)aim.y, &output[9]);
-    output[11] = '\0';
+
+    if (aimMode == AIM_MODE_MOUSE)
+    {
+        output[6] = 'A';
+        output[7] = 'X';
+        output[8] = ':';
+        formatHex8((u8)aim.x, &output[9]);
+        output[11] = ' ';
+        output[12] = 'A';
+        output[13] = 'Y';
+        output[14] = ':';
+        formatHex8((u8)aim.y, &output[15]);
+        output[17] = ' ';
+        output[18] = ' ';
+        output[19] = '\0';
+    }
+    else
+    {
+        output[6] = 'I';
+        output[7] = 'H';
+        output[8] = ':';
+        formatHex8(turret->targetHeading, &output[9]);
+        output[11] = ' ';
+        output[12] = ' ';
+        output[13] = ' ';
+        output[14] = ' ';
+        output[15] = ' ';
+        output[16] = ' ';
+        output[17] = ' ';
+        output[18] = ' ';
+        output[19] = '\0';
+    }
 }
 
 static void formatInputStatusLine(
     u16 pad,
+    u16 pad2,
     u8 mouseConnected,
     u8 mouseRawX,
     u8 mouseRawY,
@@ -754,25 +856,64 @@ static void formatInputStatusLine(
     output[8] = 'P';
     output[9] = '2';
     output[10] = ':';
-    output[11] = 'C';
-    output[12] = mouseConnected != 0 ? '1' : '0';
-    output[13] = ' ';
-    output[14] = 'U';
-    formatHex8(mouseRawX, &output[15]);
-    output[17] = ' ';
-    output[18] = 'V';
-    formatHex8(mouseRawY, &output[19]);
-    output[21] = '\0';
+
+    if (aimMode == AIM_MODE_MOUSE)
+    {
+        output[11] = 'M';
+        output[12] = mouseConnected != 0 ? '1' : '0';
+        output[13] = ' ';
+        output[14] = 'U';
+        formatHex8(mouseRawX, &output[15]);
+        output[17] = ' ';
+        output[18] = 'V';
+        formatHex8(mouseRawY, &output[19]);
+        output[21] = ' ';
+        output[22] = ' ';
+        output[23] = ' ';
+        output[24] = '\0';
+    }
+    else
+    {
+        output[11] = 'P';
+        output[12] = ' ';
+        formatHex16(pad2, &output[13]);
+        output[17] = ' ';
+        output[18] = ' ';
+        output[19] = ' ';
+        output[20] = ' ';
+        output[21] = ' ';
+        output[22] = ' ';
+        output[23] = ' ';
+        output[24] = '\0';
+    }
 }
 
-static void formatMouseButtonStatusLine(u8 mouseButtons, u8 mouseSensitivityValue, char *output)
+static void formatAimInputStatusLine(u8 mouseButtons, u8 mouseSensitivityValue, u16 pad2, char *output)
 {
-    output[0] = 'B';
-    output[1] = hexDigits[mouseButtons & 0x03];
-    output[2] = ' ';
-    output[3] = 'S';
-    output[4] = hexDigits[mouseSensitivityValue & 0x0F];
-    output[5] = '\0';
+    if (aimMode == AIM_MODE_MOUSE)
+    {
+        output[0] = 'M';
+        output[1] = 'B';
+        output[2] = hexDigits[mouseButtons & 0x03];
+        output[3] = ' ';
+        output[4] = 'S';
+        output[5] = hexDigits[mouseSensitivityValue & 0x0F];
+        output[6] = ' ';
+        output[7] = ' ';
+        output[8] = '\0';
+    }
+    else
+    {
+        output[0] = 'P';
+        output[1] = 'B';
+        output[2] = (pad2 & KEY_B) != 0 ? '1' : '0';
+        output[3] = ' ';
+        output[4] = ' ';
+        output[5] = ' ';
+        output[6] = ' ';
+        output[7] = ' ';
+        output[8] = '\0';
+    }
 }
 
 static u8 countActiveProjectiles(void)
@@ -790,14 +931,14 @@ static u8 countActiveProjectiles(void)
     return count;
 }
 
-static void formatGunStatusLine(u8 mouseButtons, char *output)
+static void formatGunStatusLine(u8 fireHeld, char *output)
 {
     output[0] = 'G';
     output[1] = 'U';
     output[2] = 'N';
     output[3] = ' ';
     output[4] = 'F';
-    output[5] = (mouseButtons & mouse_L) != 0 ? '1' : '0';
+    output[5] = fireHeld != 0 ? '1' : '0';
     output[6] = ' ';
     output[7] = 'C';
     output[8] = 'D';
@@ -857,11 +998,15 @@ static void initializePlayerSprites(void)
 int main(void)
 {
     u16 pad;
+    u16 padDown;
+    u16 pad2;
+    u16 pad2Gameplay;
     u8 mouseConnected;
     u8 mouseRawX;
     u8 mouseRawY;
     u8 mouseButtons;
     u8 mouseSensitivityValue;
+    u8 fireHeld;
     hull.positionX = (u16)128 << FIXED_SHIFT;
     hull.positionY = (u16)144 << FIXED_SHIFT;
     hull.speed = 0;
@@ -872,10 +1017,10 @@ int main(void)
     aim.y = 144;
     turret.heading = hull.heading;
     turret.targetHeading = hull.heading;
+    aimMode = AIM_MODE_MOUSE;
     initializeProjectiles();
     fireCooldown = 0;
-    previousMouseButtons = 0;
-    fireInputArmed = 0;
+    resetMainGunInput();
     lastShotHeading = turret.heading;
 
     consoleInitDefaultText(0);
@@ -889,12 +1034,12 @@ int main(void)
     bgSetDisable(2);
 
     consoleDrawText(13, 0, "THR:N TURN:N");
-    consoleDrawText(13, 1, "S2-02");
+    consoleDrawText(13, 1, "S2-02A");
     consoleDrawText(0, 2, "H:00 HF:00 S:+0000");
     consoleDrawText(0, 3, "T:00 TG:00 TF:00");
-    consoleDrawText(0, 4, "AX:B0 AY:90");
-    consoleDrawText(0, 5, "P1:0000 P2:C0 U00 V00");
-    consoleDrawText(0, 6, "B0 S0");
+    consoleDrawText(0, 4, "AIM:M AX:B0 AY:90");
+    consoleDrawText(0, 5, "P1:0000 P2:M0 U00 V00");
+    consoleDrawText(0, 6, "MB0 S0  ");
     consoleDrawText(0, 7, "GUN F0 CD00 SH0 H00");
 
     initMouse(MOUSE_SLOW);
@@ -908,6 +1053,8 @@ int main(void)
         WaitForVBlank();
 
         pad = padsCurrent(0);
+        padDown = padsDown(0);
+        pad2 = padsCurrent(1);
         mouseConnected = mouseConnect[1] != 0 ? 1 : 0;
 
         if (mouseConnected != 0)
@@ -925,16 +1072,35 @@ int main(void)
             mouseSensitivityValue = 0;
         }
 
-        updateAimCursor(mouseConnected, mouseRawX, mouseRawY);
+        updateAimMode(padDown);
+        pad2Gameplay = mouseConnected == 0 ? pad2 : 0;
+
+        if (aimMode == AIM_MODE_MOUSE)
+        {
+            updateAimCursor(mouseConnected, mouseRawX, mouseRawY);
+            fireHeld = mouseConnected != 0 && (mouseButtons & mouse_L) != 0 ? 1 : 0;
+        }
+        else
+        {
+            fireHeld = (pad2Gameplay & KEY_B) != 0 ? 1 : 0;
+        }
+
         resolveHullInput(pad, &hull);
 
         updateHullHeading(&hull);
         updateHullSpeed(&hull);
         updateHullPosition(&hull);
-        updateTurretTarget(&hull, &turret);
+        if (aimMode == AIM_MODE_MOUSE)
+        {
+            updateTurretTargetFromMouse(&hull, &turret);
+        }
+        else
+        {
+            updateTurretTargetFromPad2(pad2Gameplay, &turret);
+        }
         updateTurretHeading(&turret);
         updateProjectiles();
-        updateMainGun(mouseButtons, &hull, &turret);
+        updateMainGun(fireHeld, &hull, &turret);
         updateHullSprites(&hull);
         updateTurretAndCursorSprites(&hull, &turret);
         updateProjectileSprites();
@@ -949,21 +1115,22 @@ int main(void)
         formatTurretStatusLine(&turret, turretStatusLine);
         consoleDrawText(0, 3, "%s", turretStatusLine);
 
-        formatAimStatusLine(aimStatusLine);
+        formatAimStatusLine(&turret, aimStatusLine);
         consoleDrawText(0, 4, "%s", aimStatusLine);
 
         formatInputStatusLine(
             pad,
+            pad2,
             mouseConnected,
             mouseRawX,
             mouseRawY,
             inputStatusLine);
         consoleDrawText(0, 5, "%s", inputStatusLine);
 
-        formatMouseButtonStatusLine(mouseButtons, mouseSensitivityValue, mouseButtonStatusLine);
-        consoleDrawText(0, 6, "%s", mouseButtonStatusLine);
+        formatAimInputStatusLine(mouseButtons, mouseSensitivityValue, pad2, aimInputStatusLine);
+        consoleDrawText(0, 6, "%s", aimInputStatusLine);
 
-        formatGunStatusLine(mouseButtons, gunStatusLine);
+        formatGunStatusLine(fireHeld, gunStatusLine);
         consoleDrawText(0, 7, "%s", gunStatusLine);
     }
 

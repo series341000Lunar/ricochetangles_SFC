@@ -2,6 +2,7 @@
 #include "hull_placeholder.inc"
 #include "input_hud.inc"
 #include "turret_placeholder.inc"
+#include "heavy_tank_test.inc"
 
 #define FIXED_SHIFT 8
 
@@ -22,13 +23,15 @@
 #define PROJECTILE_MIN_Y 56
 #define PROJECTILE_MAX_Y 223
 
-#define ENEMY_INITIAL_X 208
+#define ENEMY_CLASS_HEAVY_TEST 1
+#define ENEMY_INITIAL_X 223
 #define ENEMY_INITIAL_Y 144
 #define ENEMY_INITIAL_HEADING 128
-#define ENEMY_MAX_HP 3
-#define ENEMY_ARMOR_HALF_LENGTH 13
-#define ENEMY_ARMOR_HALF_WIDTH 10
-#define ENEMY_ARMOR_BOUNDING_RADIUS 18
+#define HEAVY_TANK_TEST_MAX_HP 20
+#define HEAVY_TANK_TEST_ARMOR_HALF_LENGTH 28
+#define HEAVY_TANK_TEST_ARMOR_HALF_WIDTH 16
+#define HEAVY_TANK_TEST_ARMOR_BOUNDING_RADIUS 33
+#define HEAVY_TANK_TEST_MODULE_OFFSET 17
 #define ENEMY_HIT_FLASH_FRAMES 6
 #define ENEMY_RICOCHET_FLASH_FRAMES 4
 #define RICOCHET_THRESHOLD_DEGREES 75
@@ -57,7 +60,9 @@
 #define TURRET_OAM_ID 24
 #define CURSOR_OAM_ID 28
 #define PROJECTILE_OAM_BASE 32
-#define ENEMY_OAM_ID 48
+#define ENEMY_FRONT_OAM_ID 48
+#define ENEMY_CENTER_OAM_ID 52
+#define ENEMY_REAR_OAM_ID 56
 #define HULL_GFX_VRAM_ADDRESS 0x0000
 #define HULL_GFX_BYTES 8192
 #define INPUT_HUD_GFX_VRAM_ADDRESS 0x1000
@@ -69,6 +74,16 @@
 #define TURRET_GFX_VRAM_ADDRESS 0x1600
 #define TURRET_GFX_BYTES 2048
 #define TURRET_TILE_BASE 352
+#define HEAVY_TANK_TEST_FRONT_GFX_VRAM_ADDRESS 0x1A00
+#define HEAVY_TANK_TEST_CENTER_GFX_VRAM_ADDRESS 0x1A40
+#define HEAVY_TANK_TEST_REAR_GFX_VRAM_ADDRESS 0x1A80
+#define HEAVY_TANK_TEST_GFX_BYTES 24576
+#define HEAVY_TANK_TEST_FRAME_BYTES 1536
+#define HEAVY_TANK_TEST_COMPONENT_BYTES 512
+#define HEAVY_TANK_TEST_TILE_ROW_BYTES 128
+#define HEAVY_TANK_TEST_FRONT_TILE_BASE 416
+#define HEAVY_TANK_TEST_CENTER_TILE_BASE 420
+#define HEAVY_TANK_TEST_REAR_TILE_BASE 424
 #define MARKER_DISTANCE 20
 
 typedef struct
@@ -113,6 +128,7 @@ typedef struct
     u8 maxHp;
     u8 active;
     u8 hitFlashFrames;
+    u8 classId;
 } EnemyState;
 
 typedef enum
@@ -213,6 +229,19 @@ static void formatImpactDegrees(u8 headingUnits, char *output)
     output[1] = (char)('0' + degrees);
 }
 
+static void formatDecimal2(u8 value, char *output)
+{
+    u8 tens = 0;
+
+    while (value >= 10)
+    {
+        value -= 10;
+        tens++;
+    }
+    output[0] = (char)('0' + tens);
+    output[1] = (char)('0' + value);
+}
+
 static s16 sin256(u8 angle)
 {
     u8 quadrant = angle >> 6;
@@ -246,6 +275,26 @@ static u8 headingVisualFrame(u8 heading)
 static u16 hullVisualTile(u8 visualFrame)
 {
     return (u16)(((u16)(visualFrame >> 2) << 6) + ((u16)(visualFrame & 0x03) << 2));
+}
+
+static void loadHeavyTankTestVisualFrame(u8 visualFrame)
+{
+    u16 sourceOffset = ((u16)visualFrame << 10) + ((u16)visualFrame << 9);
+    u16 frontVramAddress = HEAVY_TANK_TEST_FRONT_GFX_VRAM_ADDRESS;
+    u16 centerVramAddress = HEAVY_TANK_TEST_CENTER_GFX_VRAM_ADDRESS;
+    u16 rearVramAddress = HEAVY_TANK_TEST_REAR_GFX_VRAM_ADDRESS;
+    u8 tileRow;
+
+    for (tileRow = 0; tileRow < 4; tileRow++)
+    {
+        dmaCopyVram(&heavyTankTestTiles + sourceOffset, frontVramAddress, HEAVY_TANK_TEST_TILE_ROW_BYTES);
+        dmaCopyVram(&heavyTankTestTiles + sourceOffset + HEAVY_TANK_TEST_COMPONENT_BYTES, centerVramAddress, HEAVY_TANK_TEST_TILE_ROW_BYTES);
+        dmaCopyVram(&heavyTankTestTiles + sourceOffset + (HEAVY_TANK_TEST_COMPONENT_BYTES * 2), rearVramAddress, HEAVY_TANK_TEST_TILE_ROW_BYTES);
+        sourceOffset += HEAVY_TANK_TEST_TILE_ROW_BYTES;
+        frontVramAddress += 0x0100;
+        centerVramAddress += 0x0100;
+        rearVramAddress += 0x0100;
+    }
 }
 
 static u16 inputButtonTile(u8 buttonIndex, u8 pressed)
@@ -469,10 +518,11 @@ static void initializeEnemy(void)
     enemy.positionX = (u16)ENEMY_INITIAL_X << FIXED_SHIFT;
     enemy.positionY = (u16)ENEMY_INITIAL_Y << FIXED_SHIFT;
     enemy.heading = ENEMY_INITIAL_HEADING;
-    enemy.hp = ENEMY_MAX_HP;
-    enemy.maxHp = ENEMY_MAX_HP;
+    enemy.hp = HEAVY_TANK_TEST_MAX_HP;
+    enemy.maxHp = HEAVY_TANK_TEST_MAX_HP;
     enemy.active = 1;
     enemy.hitFlashFrames = 0;
+    enemy.classId = ENEMY_CLASS_HEAVY_TEST;
     lastArmorImpact.pointX = 0;
     lastArmorImpact.pointY = 0;
     lastArmorImpact.face = ARMOR_FACE_NONE;
@@ -524,8 +574,8 @@ static u8 resolveEnemyArmorImpact(
     s16 previousRight;
     s16 currentForward;
     s16 currentRight;
-    s16 halfLength = ENEMY_ARMOR_HALF_LENGTH;
-    s16 halfWidth = ENEMY_ARMOR_HALF_WIDTH;
+    s16 halfLength = HEAVY_TANK_TEST_ARMOR_HALF_LENGTH;
+    s16 halfWidth = HEAVY_TANK_TEST_ARMOR_HALF_WIDTH;
     u16 entryNumerator = 0;
     u16 entryDenominator = 1;
     u16 candidateNumerator;
@@ -543,10 +593,10 @@ static u8 resolveEnemyArmorImpact(
         return 0;
     }
 
-    if (currentPixelX < enemyPixelX - ENEMY_ARMOR_BOUNDING_RADIUS ||
-        currentPixelX > enemyPixelX + ENEMY_ARMOR_BOUNDING_RADIUS ||
-        currentPixelY < enemyPixelY - ENEMY_ARMOR_BOUNDING_RADIUS ||
-        currentPixelY > enemyPixelY + ENEMY_ARMOR_BOUNDING_RADIUS)
+    if (currentPixelX < enemyPixelX - HEAVY_TANK_TEST_ARMOR_BOUNDING_RADIUS ||
+        currentPixelX > enemyPixelX + HEAVY_TANK_TEST_ARMOR_BOUNDING_RADIUS ||
+        currentPixelY < enemyPixelY - HEAVY_TANK_TEST_ARMOR_BOUNDING_RADIUS ||
+        currentPixelY > enemyPixelY + HEAVY_TANK_TEST_ARMOR_BOUNDING_RADIUS)
     {
         return 0;
     }
@@ -1079,19 +1129,45 @@ static void updateProjectileSprites(void)
 
 static void updateEnemySprite(const EnemyState *enemy)
 {
+    u8 visualFrame;
+    s16 centerX;
+    s16 centerY;
+    s16 moduleOffsetX;
+    s16 moduleOffsetY;
+
     if (enemy->active == 0 ||
         (enemy->hitFlashFrames != 0 && (enemy->hitFlashFrames & 1) == 0))
     {
-        oamSetVisible(ENEMY_OAM_ID, OBJ_HIDE);
+        oamSetVisible(ENEMY_FRONT_OAM_ID, OBJ_HIDE);
+        oamSetVisible(ENEMY_CENTER_OAM_ID, OBJ_HIDE);
+        oamSetVisible(ENEMY_REAR_OAM_ID, OBJ_HIDE);
         return;
     }
 
-    oamSetGfxOffset(ENEMY_OAM_ID, hullVisualTile(headingVisualFrame(enemy->heading)));
+    visualFrame = headingVisualFrame(enemy->heading);
+    centerX = (s16)(enemy->positionX >> FIXED_SHIFT);
+    centerY = (s16)(enemy->positionY >> FIXED_SHIFT);
+    moduleOffsetX = (cos256(enemy->heading) * HEAVY_TANK_TEST_MODULE_OFFSET) >> FIXED_SHIFT;
+    moduleOffsetY = (sin256(enemy->heading) * HEAVY_TANK_TEST_MODULE_OFFSET) >> FIXED_SHIFT;
+
+    oamSetGfxOffset(ENEMY_FRONT_OAM_ID, HEAVY_TANK_TEST_FRONT_TILE_BASE);
+    oamSetGfxOffset(ENEMY_CENTER_OAM_ID, HEAVY_TANK_TEST_CENTER_TILE_BASE);
+    oamSetGfxOffset(ENEMY_REAR_OAM_ID, HEAVY_TANK_TEST_REAR_TILE_BASE);
     oamSetXY(
-        ENEMY_OAM_ID,
-        (s16)(enemy->positionX >> FIXED_SHIFT) - 16,
-        (s16)(enemy->positionY >> FIXED_SHIFT) - 16);
-    oamSetVisible(ENEMY_OAM_ID, OBJ_SHOW);
+        ENEMY_FRONT_OAM_ID,
+        centerX + moduleOffsetX - 16,
+        centerY + moduleOffsetY - 16);
+    oamSetXY(
+        ENEMY_CENTER_OAM_ID,
+        centerX - 16,
+        centerY - 16);
+    oamSetXY(
+        ENEMY_REAR_OAM_ID,
+        centerX - moduleOffsetX - 16,
+        centerY - moduleOffsetY - 16);
+    oamSetVisible(ENEMY_FRONT_OAM_ID, OBJ_SHOW);
+    oamSetVisible(ENEMY_CENTER_OAM_ID, OBJ_SHOW);
+    oamSetVisible(ENEMY_REAR_OAM_ID, OBJ_SHOW);
 }
 
 static void updateInputHudSprites(u16 pad)
@@ -1127,10 +1203,10 @@ static void drawGameplayText(void)
     consoleDrawText(4, 7, "                            ");
     consoleDrawText(4, 9, "                            ");
     consoleDrawText(8, 12, "                        ");
-    consoleDrawText(13, 0, "DRV:P AIM:M EN:3");
+    consoleDrawText(13, 0, "DRV:P AIM:M EN:20");
     consoleDrawText(13, 1, "H:00 T:00 G:0 S:0");
     consoleDrawText(0, 2, "             AR:- A:-- ---     ");
-    consoleDrawText(0, 3, "S3-02");
+    consoleDrawText(0, 3, "S3-02R");
     drawFooter();
 }
 
@@ -1185,9 +1261,11 @@ static void initializePlayerSprites(void)
     dmaCopyVram(&hullPlaceholderTiles, HULL_GFX_VRAM_ADDRESS, HULL_GFX_BYTES);
     dmaCopyVram(&inputHudTiles, INPUT_HUD_GFX_VRAM_ADDRESS, INPUT_HUD_GFX_BYTES);
     dmaCopyVram(&turretPlaceholderTiles, TURRET_GFX_VRAM_ADDRESS, TURRET_GFX_BYTES);
+    loadHeavyTankTestVisualFrame(headingVisualFrame(ENEMY_INITIAL_HEADING));
     dmaCopyCGram(&hullPlaceholderPalette, 128, (&hullPlaceholderPaletteEnd - &hullPlaceholderPalette));
     dmaCopyCGram(&inputHudPalette, 144, (&inputHudPaletteEnd - &inputHudPalette));
     dmaCopyCGram(&turretPlaceholderPalette, 160, (&turretPlaceholderPaletteEnd - &turretPlaceholderPalette));
+    dmaCopyCGram(&heavyTankTestPalette, 176, (&heavyTankTestPaletteEnd - &heavyTankTestPalette));
 
     oamSet(HULL_OAM_ID, 112, 128, 2, 0, 0, hullVisualTile(0), 0);
     oamSetEx(HULL_OAM_ID, OBJ_LARGE, OBJ_SHOW);
@@ -1216,15 +1294,35 @@ static void initializePlayerSprites(void)
     }
 
     oamSet(
-        ENEMY_OAM_ID,
+        ENEMY_FRONT_OAM_ID,
+        ENEMY_INITIAL_X - HEAVY_TANK_TEST_MODULE_OFFSET - 16,
+        ENEMY_INITIAL_Y - 16,
+        2,
+        0,
+        0,
+        HEAVY_TANK_TEST_FRONT_TILE_BASE,
+        3);
+    oamSetEx(ENEMY_FRONT_OAM_ID, OBJ_LARGE, OBJ_SHOW);
+    oamSet(
+        ENEMY_CENTER_OAM_ID,
         ENEMY_INITIAL_X - 16,
         ENEMY_INITIAL_Y - 16,
         2,
         0,
         0,
-        hullVisualTile(headingVisualFrame(ENEMY_INITIAL_HEADING)),
-        0);
-    oamSetEx(ENEMY_OAM_ID, OBJ_LARGE, OBJ_SHOW);
+        HEAVY_TANK_TEST_CENTER_TILE_BASE,
+        3);
+    oamSetEx(ENEMY_CENTER_OAM_ID, OBJ_LARGE, OBJ_SHOW);
+    oamSet(
+        ENEMY_REAR_OAM_ID,
+        ENEMY_INITIAL_X + HEAVY_TANK_TEST_MODULE_OFFSET - 16,
+        ENEMY_INITIAL_Y - 16,
+        2,
+        0,
+        0,
+        HEAVY_TANK_TEST_REAR_TILE_BASE,
+        3);
+    oamSetEx(ENEMY_REAR_OAM_ID, OBJ_LARGE, OBJ_SHOW);
 }
 
 int main(void)
@@ -1371,8 +1469,8 @@ int main(void)
 
         consoleDrawText(17, 0, driveMode == DRIVE_MODE_PC_LIKE ? "P" : "S");
         consoleDrawText(23, 0, aimMode == AIM_MODE_MOUSE ? "M" : "P");
-        statusValue[0] = hexDigits[enemy.hp & 0x0F];
-        statusValue[1] = '\0';
+        formatDecimal2(enemy.hp, statusValue);
+        statusValue[2] = '\0';
         consoleDrawText(28, 0, "%s", statusValue);
 
         formatHex8(hull.heading, statusValue);

@@ -42,7 +42,7 @@ S3 — CORE COMBAT
 
 현재 목표는 게임 전체 구현이 아니다.
 
-S0와 S1은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. S2-02A는 사용자가 P1 SELECT Aim Mode 전환, P2 Pad 8방향 조준과 P2 B 발사를 직접 확인하여 2026-08-25 `PASS / USER CONFIRMED`됐다. 사용자의 GO 결정에 따라 S2도 `PASS / CLOSED`됐다. S3-01과 S3-01A-R1도 2026-08-25 사용자 직접 확인으로 `PASS / USER CONFIRMED`됐으며, 현재 목표는 S3-02의 heading-aware Armor Face / Impact Angle / Ricochet V0 검증이다.
+S0와 S1은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. S2-02A는 사용자가 P1 SELECT Aim Mode 전환, P2 Pad 8방향 조준과 P2 B 발사를 직접 확인하여 2026-08-25 `PASS / USER CONFIRMED`됐다. 사용자의 GO 결정에 따라 S2도 `PASS / CLOSED`됐다. S3-01과 S3-01A-R1도 2026-08-25 사용자 직접 확인으로 `PASS / USER CONFIRMED`됐으며, 현재 목표는 S3-02R1의 Heavy Target silhouette와 front/rear/side 가독성 검증이다.
 
 ```text
 PLAYER PROJECTILE
@@ -259,7 +259,7 @@ S3-01 — PASS / USER CONFIRMED 2026-08-25
 S3-01A-R1 — PASS / USER CONFIRMED 2026-08-25
 
 CURRENT SUBTASK
-S3-02 — Armor Face / Impact Angle / Ricochet V0
+S3-02R1 — Heavy Target Silhouette Revision
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -803,6 +803,18 @@ S3-01A 초안은 Bank 00 free 28 bytes로 `oamInitGfxAttr`을 Bank 01로 밀어 
 Impact angle 내부 표현은 `0..64`이며 0은 armor normal에 직각, 64는 surface를 스치는 90도 hit다. HTML 기준판의 일반 `autoRicochetAngleDegrees=75`를 보존한다. 0–255 heading 격자에서 75도 이상인 첫 단위는 54이므로 `impactAngle >= 54`를 RICOCHET으로 처리한다. 54 units는 75.9375도이며 HUD에는 정수 degree floor로 표시한다. RICOCHET은 shell을 종료하고 Enemy HP를 유지하며, 그 외 generic shell hit은 PENETRATION으로 기존 `damageEnemy` path를 통해 HP를 정확히 1 감소시킨다. NON-PENETRATION, armor thickness, penetration power와 reflected shell flight는 아직 구현하지 않는다.
 
 S3-02 자동검증과 romdev headless runtime regression은 구현됐지만 MesenCE/bsnes의 사람이 보는 angle/readability와 실제 조작 체감은 별도 확인이 필요하다. 따라서 현재 상태는 `S3-02 — IMPLEMENTED / USER PLAYTEST REQUIRED`이며 사용자 승인 없이 S3-03으로 진행하지 않는다.
+
+현재 S3-02R은 S3-02의 armor face/normal/impact-angle/RICOCHET/PENETRATION 의미와 75도(unit 54) threshold를 유지하면서 작은 HP3 dummy를 `HEAVY_TANK_TEST`로 교체한다. 최소 class 표현은 `EnemyState.classId` 하나이며 Heavy Test는 위치 `(223,144)`, heading 128, HP/max HP 20, AI/movement/turret/fire가 없는 정적 표적이다. PEN damage 1, RIC HP unchanged, 20 PEN destruction과 SELECT reset HP20을 사용한다. 과거 S3-01의 HP3 계약과 사용자 확인 기록은 당시 gate의 역사로 유지한다.
+
+Heavy visual은 16방향 32×32 ochre module 두 개를 heading 앞/뒤 12 px에 합성한 약 54×30 px placeholder다. 전용 palette 3은 shadow/base/light/highlight의 ochre/sand 4단계이며 Player green과 분리된다. 전체 16방향 ROM graphics 8,192 bytes와 palette 32 bytes는 Bank 04에 두고, 현재 frame 512 bytes만 tile base 416의 네 VRAM row에 load하여 OBJ tile index 511을 넘지 않는다. Heavy OBJ는 OAM 48/52 두 개이고 전체 visible OBJ 최대 14개, worst gameplay scanline 26 OBJ tiles다.
+
+Armor geometry는 visual에 맞춘 local half-length 28 px / half-width 16 px와 broad-phase radius 33 px다. Projectile visual/physics와 Ricochet math는 변경하지 않았다. 자동 verifier와 romdev headless WRAM regression은 HP20→19 PEN, HP19 유지 RIC, 20 PEN HP0/inactive를 확인했지만 Heavy scale/color/FRONT-SIDE readability/intentional Ricochet feel/Projectile 상대 크기는 사용자 확인 전까지 `UNVERIFIED`다. 따라서 상태는 `S3-02R — IMPLEMENTED / USER PLAYTEST REQUIRED`이며 S3-02를 PASS로 승격하거나 S3-03으로 진행하지 않는다.
+
+현재 S3-02R1은 S3-02R gameplay 수치와 armor geometry를 그대로 유지하고 Heavy visual silhouette만 수정한다. 첫 revision의 tapered front/rear half가 가운데가 잘록한 skateboard처럼 읽힌다는 사용자 피드백에 따라, 16방향별 front/center/rear 직사각형 segment 세 개를 heading 축 `+17/0/-17 px`에 합성한다. 결과는 cardinal 기준 약 52×26 px의 box hull이며 pale front plate, dark upper/lower side armor band, dark flat rear plate를 얇게 구분한다. Ochre palette 3과 HP20, Projectile, Armor Face, impact-angle 및 unit 54 RICOCHET threshold는 변경하지 않는다.
+
+S3-02R1 전체 ROM graphics는 front/center/rear 16방향 합계 24,576 bytes이고 palette는 기존과 같은 32 bytes다. 현재 frame set 1,536 bytes는 tile base 416/420/424의 분리된 row window에 load한다. Heavy OAM은 48/52/56 세 개이고 전체 visible OBJ 최대 15개, worst gameplay scanline 30/34 tiles다. 각 segment의 모든 frame은 32×32 edge에 닿지 않고 합성 centroid는 16방향 모두 동일하다. 상태는 `S3-02R1 — IMPLEMENTED / USER VISUAL REVIEW REQUIRED`이며 사용자에게 box-style Heavy Tank silhouette, front/rear, side readability와 현재 scale만 확인받는다. S3-02를 PASS로 승격하거나 S3-03으로 진행하지 않는다.
+
+S3-02R1 box-hull 최종 clean build 2회는 동일한 262,144-byte ROM과 SHA-256 `42e6a96aca660d2aa033ae1e665fa45155f66f3a2d664cd92bcf51ad0eea3db9`를 생성했다. Compiler warning/error는 0이고 기존 S1/S2/S3/menu/armor verifier, Bank layout와 ROM_VERIFY가 모두 PASS했다. Bank 00은 1,240 bytes(3.78%) free이고 Heavy asset Bank 04는 8,160 bytes(24.90%) free다. romdev gameplay-preservation regression은 HP20 초기값, PEN 뒤 HP19, 20 PEN destruction과 threshold RIC HP19 유지를 확인했다. MesenCE/bsnes의 실제 silhouette 표시는 사용자 visual review 전까지 `UNVERIFIED`다.
 
 실제 조작감이 좋지 않다면 입력 방식을 변경할 수 있다.
 
@@ -1549,6 +1561,10 @@ Agent / Codex가 가능한 한 담당할 영역:
 22. S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage — PASS / USER CONFIRMED 2026-08-25
 
 23. S3-02 — Armor Face / Impact Angle / Ricochet V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
+
+24. S3-02R — Heavy Armor Target / Ricochet Readability Revision — IMPLEMENTED / USER PLAYTEST REQUIRED
+
+25. S3-02R1 — Heavy Target Silhouette Revision — IMPLEMENTED / USER VISUAL REVIEW REQUIRED
 ```
 
 S0는 MesenCE 2.2.1과 bsnes nightly의 사용자 확인, Delta iOS 추가 호환성 확인, 결정적 clean build와 ROM sanity를 근거로 `PASS / CLOSED`되었다.
@@ -1697,9 +1713,11 @@ CURRENT STATUS:
 S3-01 — PASS / USER CONFIRMED 2026-08-25
 S3-01A-R1 — PASS / USER CONFIRMED 2026-08-25
 S3-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-02R — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-02R1 — IMPLEMENTED / USER VISUAL REVIEW REQUIRED
 
 CURRENT SUBTASK:
-S3-02 — Armor Face / Impact Angle / Ricochet V0
+S3-02R1 — Heavy Target Silhouette Revision
 
 DO NOT MARK S3-02 PASS OR PROCEED TO S3-03, NON-PEN,
 ARMOR THICKNESS OR PENETRATION POWER WITHOUT USER CONFIRMATION.

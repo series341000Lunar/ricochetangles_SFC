@@ -17,8 +17,8 @@ function Assert-SourcePattern {
     }
 }
 
-Assert-SourcePattern '#define\s+ENEMY_ARMOR_HALF_LENGTH\s+13\b' 'Enemy armor half-length must be 13 pixels.'
-Assert-SourcePattern '#define\s+ENEMY_ARMOR_HALF_WIDTH\s+10\b' 'Enemy armor half-width must be 10 pixels.'
+Assert-SourcePattern '#define\s+HEAVY_TANK_TEST_ARMOR_HALF_LENGTH\s+28\b' 'Heavy Test armor half-length must be 28 pixels.'
+Assert-SourcePattern '#define\s+HEAVY_TANK_TEST_ARMOR_HALF_WIDTH\s+16\b' 'Heavy Test armor half-width must be 16 pixels.'
 Assert-SourcePattern '#define\s+RICOCHET_THRESHOLD_DEGREES\s+75\b' 'HTML canonical 75-degree threshold is not recorded.'
 Assert-SourcePattern '#define\s+RICOCHET_THRESHOLD_HEADING_UNITS\s+54\b' 'The first 0..255 heading unit at or above 75 degrees must be 54.'
 Assert-SourcePattern 'ARMOR_FACE_FRONT\s*=\s*1[^}]*ARMOR_FACE_LEFT\s*=\s*2[^}]*ARMOR_FACE_RIGHT\s*=\s*3[^}]*ARMOR_FACE_REAR\s*=\s*4' 'Four explicit armor faces are required.'
@@ -58,8 +58,8 @@ function Resolve-LocalArmorImpact {
         [int]$EnemyHeading
     )
 
-    $halfLength = 13
-    $halfWidth = 10
+    $halfLength = 28
+    $halfWidth = 16
     if ($CurrentForward -lt -$halfLength -or $CurrentForward -gt $halfLength -or
         $CurrentRight -lt -$halfWidth -or $CurrentRight -gt $halfWidth) {
         return $null
@@ -98,63 +98,63 @@ function Resolve-LocalArmorImpact {
     return [pscustomobject]@{ Face = $entry.Face; Normal = $normal; Angle = $angle; Result = $result }
 }
 
-$front = Resolve-LocalArmorImpact 14 0 12 0 128 0
+$front = Resolve-LocalArmorImpact 29 0 27 0 128 0
 if ($null -eq $front -or $front.Face -ne 'FRONT' -or $front.Angle -ne 0 -or $front.Result -ne 'PENETRATION') {
     throw 'FRONT perpendicular fixture failed.'
 }
 
-$side = Resolve-LocalArmorImpact 0 11 0 9 192 0
+$side = Resolve-LocalArmorImpact 0 17 0 15 192 0
 if ($null -eq $side -or $side.Face -ne 'RIGHT' -or $side.Normal -ne 64 -or $side.Angle -ne 0 -or $side.Result -ne 'PENETRATION') {
     throw 'SIDE perpendicular fixture failed.'
 }
 
-$below = Resolve-LocalArmorImpact 14 0 12 -1 181 0
+$below = Resolve-LocalArmorImpact 29 0 27 -1 181 0
 if ($below.Angle -ne 53 -or $below.Result -ne 'PENETRATION') {
     throw 'Below-threshold grazing fixture failed.'
 }
 
-$boundary = Resolve-LocalArmorImpact 14 0 12 -1 182 0
+$boundary = Resolve-LocalArmorImpact 29 0 27 -1 182 0
 if ($boundary.Angle -ne 54 -or $boundary.Result -ne 'RICOCHET') {
     throw 'Threshold equality must RICOCHET at heading unit 54.'
 }
 
-$above = Resolve-LocalArmorImpact 14 0 12 -1 192 0
+$above = Resolve-LocalArmorImpact 29 0 27 -1 192 0
 if ($above.Angle -ne 64 -or $above.Result -ne 'RICOCHET') {
     throw 'Above-threshold grazing fixture failed.'
 }
 
-$hp = 3
+$hp = 20
 $shellActive = $true
 if ($boundary.Result -eq 'RICOCHET') { $shellActive = $false }
-if ($hp -ne 3 -or $shellActive) { throw 'RICOCHET changed HP or left the shell active.' }
+if ($hp -ne 20 -or $shellActive) { throw 'RICOCHET changed HP or left the shell active.' }
 
-$hp = 3
+$hp = 20
 $shellActive = $true
 if ($front.Result -eq 'PENETRATION') { $hp--; $shellActive = $false }
-if ($hp -ne 2 -or $shellActive) { throw 'PENETRATION did not apply exactly one damage and end the shell.' }
+if ($hp -ne 19 -or $shellActive) { throw 'PENETRATION did not apply exactly one damage and end the shell.' }
 if ($front.Result -eq 'PENETRATION' -and $shellActive) { $hp-- }
-if ($hp -ne 2) { throw 'One Projectile produced more than one armor result.' }
+if ($hp -ne 19) { throw 'One Projectile produced more than one armor result.' }
 
-$hp = 3
+$hp = 20
 $active = $true
-foreach ($shot in 1..3) {
+foreach ($shot in 1..20) {
     if ($front.Result -eq 'PENETRATION') { $hp-- }
     if ($hp -eq 0) { $active = $false }
 }
-if ($hp -ne 0 -or $active) { throw 'Three PENETRATION results did not destroy HP3 Enemy.' }
+if ($hp -ne 0 -or $active) { throw 'Twenty PENETRATION results did not destroy HP20 Heavy Test Enemy.' }
 
-$miss = Resolve-LocalArmorImpact 16 0 14 0 128 0
+$miss = Resolve-LocalArmorImpact 31 0 29 0 128 0
 if ($null -ne $miss) { throw 'Miss fixture produced an armor result.' }
 
-$wrapA = Resolve-LocalArmorImpact 14 0 12 0 130 254
-$wrapB = Resolve-LocalArmorImpact 14 0 12 0 126 2
+$wrapA = Resolve-LocalArmorImpact 29 0 27 0 130 254
+$wrapB = Resolve-LocalArmorImpact 29 0 27 0 126 2
 if ($wrapA.Angle -ne 4 -or $wrapB.Angle -ne 4 -or
     $wrapA.Result -ne 'PENETRATION' -or $wrapB.Result -ne 'PENETRATION') {
     throw 'Heading wrap fixture failed around FE/02.'
 }
 
 Write-Output 'S3_ARMOR_VERIFY=PASS'
-Write-Output 'ARMOR_GEOMETRY=ORIENTED_RECT_26x20'
+Write-Output 'ARMOR_GEOMETRY=ORIENTED_RECT_56x32'
 Write-Output 'ARMOR_FACES=FRONT,LEFT,RIGHT,REAR'
 Write-Output 'IMPACT_ANGLE_UNITS=0..64'
 Write-Output 'IMPACT_ANGLE_MEANING=0_PERPENDICULAR,64_GRAZING'
@@ -163,4 +163,6 @@ Write-Output 'RICOCHET_THRESHOLD_HEADING_UNITS=54'
 Write-Output 'RICOCHET_FIRST_REPRESENTABLE_DEGREES=75.9375'
 Write-Output 'RUNTIME_FLOATING_POINT=NONE'
 Write-Output 'RUNTIME_ATAN2_ACOS=NONE'
+Write-Output 'HEAVY_TANK_TEST_HP=20'
+Write-Output 'HEAVY_TANK_TEST_DESTRUCTION=PEN_X20'
 Write-Output 'DETERMINISTIC_CASES=11'

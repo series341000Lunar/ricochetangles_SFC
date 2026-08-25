@@ -90,8 +90,8 @@ S0 — BOOT & INPUT과 S1 — DRIVE는 2026-08-23 사용자 GO 결정으로 각�
 현재 작업:
 
 ```text
-S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage
-IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-02R1 — Heavy Target Silhouette Revision
+IMPLEMENTED / USER VISUAL REVIEW REQUIRED
 ```
 
 현재 S3-01 검증 범위:
@@ -841,6 +841,53 @@ REAL SUPER FAMICOM — UNVERIFIED
 
 ---
 
+## S3-02R Heavy Armor Target / Ricochet Readability Revision
+
+S3-02의 Armor Face, outward normal, impact angle과 `impactAngle >= 54` RICOCHET 알고리즘은 변경하지 않고 작은 HP3 dummy만 `HEAVY_TANK_TEST` class/profile로 교체했습니다. `EnemyState`에는 범용 actor 체계 없이 `classId` 한 필드만 추가했고, 초기/reset 상태는 `(223,144)`, heading `128`, HP/max HP `20`, active입니다. PEN은 기존 `damageEnemy()`로 HP를 1만 줄이고, RIC은 HP를 유지합니다. 20번째 PEN에서 기존 destroyed 처리를 사용합니다. HUD HP는 `EN:20`부터 `EN:00`까지 두 자리 decimal로 표시합니다.
+
+Heavy visual은 16방향 32×32 ochre module을 heading vector 앞/뒤 12 px에 2개 합성합니다. 고정 pivot 기준의 실효 envelope는 약 54×30 px이며 OAM ID 48/52의 large OBJ 두 개를 사용합니다. Palette 3은 Player green과 분리된 전용 OBJ palette이며 source RGB는 shadow `#49351F`, base `#9D773A`, light `#C49D58`, highlight `#E0C17E`입니다. gfx4snes BGR555 결과는 `0x0CC9`, `0x1DD3`, `0x2E78`, `0x3F1C`입니다. 최종 전차 아트나 특정 실차 재현은 아닙니다.
+
+Human-readable source는 `assets/heavy_tank_test/heavy_tank_test.txt`, deterministic generator는 `tools/generate-heavy-tank-test.ps1`입니다. 전체 16방향 ROM graphics는 8,192 bytes, palette는 32 bytes이며 Bank 04에 있습니다. SNES OBJ tile index 511 상한을 지키기 위해 현재 visual frame 512 bytes만 tile base 416에 row-DMA합니다. Resident VRAM word ranges는 `0x1A00..0x1A3F`, `0x1B00..0x1B3F`, `0x1C00..0x1C3F`, `0x1D00..0x1D3F`이고 BG graphics `0x3000`과 겹치지 않습니다.
+
+Gameplay armor rectangle은 visual footprint에 맞춰 local forward half-length 28 px, local right half-width 16 px(56×32)로 확대했고 broad-phase radius는 33 px입니다. 초기 위치를 X 223으로 옮겨 left-facing front plate는 기존과 같은 world X 195 부근에 남기고 visual rear는 화면 안 X 250 부근에 둡니다. `RICOCHET_THRESHOLD_DEGREES=75`, heading-unit threshold 54, Projectile pool/cooldown/muzzle/speed/visual은 변경하지 않았습니다.
+
+OAM은 Player-side 최대 12개 + Heavy 2개 = 전체 14개입니다. Projectile 4개가 모두 보이는 gameplay scanline 계산은 26 OBJ tiles로 SNES 34-tile/scanline 한계 아래입니다. romdev headless screenshot에서는 Player보다 큰 Heavy visual과 palette 분리를 확인했지만 MesenCE/bsnes의 flicker, 실제 표시 가독성과 실기 상태는 사용자 확인 전까지 `UNVERIFIED`입니다.
+
+자동검증은 FRONT/SIDE perpendicular PEN, unit 54/above-threshold RIC, RIC HP unchanged, PEN HP-1, one-shell one-result, 20 PEN destruction, miss와 heading wrap을 통과합니다. romdev clean-ROM regression은 class 1/HP20 active 초기 상태, 첫 FRONT/0/PEN 뒤 HP19, 20번째 PEN 뒤 HP0/inactive/hit count20을 WRAM에서 확인했습니다. 별도 WRAM fixture는 PEN 뒤 HP19에서 FRONT/angle unit54/RIC을 발생시켜 HP19와 hit count1 유지도 확인했습니다.
+
+최종 clean build 2회는 compiler warning/error 0, 모든 기존 S1/S2/S3/menu verifier, `S3_ARMOR_VERIFY=PASS`, bank-layout와 `ROM_VERIFY=PASS`를 통과했습니다. 두 build는 동일한 262,144-byte ROM과 SHA-256 `e41093e1aa5364615a7b79b17f40423f0baddb3a9b138bf864ae4c0fa1ad2705`를 생성했습니다. Bank 00은 1,479 bytes(4.51%) free이고 `oamInitGfxAttr`은 Bank 00 `00:F810`에 남아 있으며, Heavy asset Bank 04는 24,544 bytes free입니다.
+
+```text
+S3-02R — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-02 — DO NOT MARK PASS WITHOUT USER CONFIRMATION
+S3-03 — DO NOT PROCEED WITHOUT USER CONFIRMATION
+REAL SUPER FAMICOM — UNVERIFIED
+```
+
+사용자 확인 항목은 Heavy scale, ochre palette, FRONT/SIDE readability, intentional Ricochet feel, 현재 Projectile 상대 크기입니다.
+
+---
+
+## S3-02R1 Heavy Target Silhouette Revision
+
+S3-02R의 HP20, 큰 target scale, 16방향, ochre palette와 armor geometry 56×32는 유지하고 visual silhouette만 수정했습니다. 첫 revision의 tapered front/rear half가 가운데가 잘록한 skateboard처럼 읽힌다는 사용자 피드백에 따라 front/center/rear 직사각형 segment 세 개를 heading 축 `+17/0/-17 px`에 합성합니다. Cardinal 기준 약 52×26 px의 box hull이며 pale front plate, dark upper/lower side armor band, dark flat rear plate를 얇게 구분합니다.
+
+Human-readable profile과 deterministic PowerShell generator는 기존 전용 경로를 그대로 사용합니다. Front/center/rear 16방향 graphics는 24,576 bytes, palette는 기존 32 bytes입니다. 현재 frame set 1,536 bytes만 resident하며 tile base 416/420/424를 사용합니다. VRAM word ranges는 `0x1A00..0x1ABF`, `0x1B00..0x1BBF`, `0x1C00..0x1CBF`, `0x1D00..0x1DBF`입니다. OAM ID 48/52/56, 전체 visible OBJ 최대 15개, worst gameplay scanline 30/34 tiles입니다. 모든 component frame은 sprite edge 비접촉이고 합성 centroid는 16방향 모두 동일합니다.
+
+Armor half-length 28, half-width 16, broad-phase radius 33, HP20, PEN damage 1, RIC HP unchanged, impact-angle algorithm과 75도/unit 54 threshold는 변경하지 않았습니다. Projectile visual/physics와 Player/Menu control도 변경하지 않았습니다.
+
+Box-hull 최종 clean build 2회는 compiler warning/error 0, 기존 verifier와 `ROM_VERIFY=PASS`를 통과하고 동일한 262,144-byte ROM 및 SHA-256 `42e6a96aca660d2aa033ae1e665fa45155f66f3a2d664cd92bcf51ad0eea3db9`를 생성했습니다. Bank 00은 1,240 bytes(3.78%) free, Heavy asset Bank 04는 8,160 bytes(24.90%) free입니다. romdev는 HP20 초기값, 첫 PEN 뒤 HP19, 20 PEN 뒤 HP0/inactive와 threshold RIC 뒤 HP19 유지를 다시 확인했습니다. MesenCE/bsnes visual은 사용자 review 전까지 `UNVERIFIED`입니다.
+
+```text
+S3-02R1 — IMPLEMENTED / USER VISUAL REVIEW REQUIRED
+S3-02 — DO NOT MARK PASS WITHOUT USER CONFIRMATION
+S3-03 — DO NOT PROCEED WITHOUT USER CONFIRMATION
+```
+
+사용자 확인 항목은 Heavy Tank로 읽히는지, front/rear가 읽히는지, long side armor가 읽히는지, 현재 큰 scale을 유지했는지입니다.
+
+---
+
 # AI-Assisted Development
 
 이 프로젝트의 연구 주제 중 하나는 다음과 같습니다.
@@ -977,9 +1024,11 @@ CURRENT STATUS
 S3-01 — PASS / USER CONFIRMED 2026-08-25
 S3-01A-R1 — PASS / USER CONFIRMED 2026-08-25
 S3-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-02R — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-02R1 — IMPLEMENTED / USER VISUAL REVIEW REQUIRED
 
 CURRENT SUBTASK
-S3-02 — Armor Face / Impact Angle / Ricochet V0
+S3-02R1 — Heavy Target Silhouette Revision
 
 Do not mark S3-02 PASS or proceed to S3-03, Non-Penetration,
 Armor Thickness or Penetration Power without user confirmation.

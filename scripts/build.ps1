@@ -54,6 +54,8 @@ $hullAssetSource = Join-Path $repoRoot 'assets\hull_placeholder\hull_16dir.txt'
 $hullAssetGenerator = Join-Path $repoRoot 'tools\generate-hull-placeholder.ps1'
 $turretAssetSource = Join-Path $repoRoot 'assets\turret_placeholder\turret_16dir.txt'
 $turretAssetGenerator = Join-Path $repoRoot 'tools\generate-turret-placeholder.ps1'
+$heavyTankTestAssetSource = Join-Path $repoRoot 'assets\heavy_tank_test\heavy_tank_test.txt'
+$heavyTankTestAssetGenerator = Join-Path $repoRoot 'tools\generate-heavy-tank-test.ps1'
 $inputHudGenerator = Join-Path $repoRoot 'tools\generate-input-hud.ps1'
 $s2AngleVerifier = Join-Path $repoRoot 'tools\verify-s2-angle.ps1'
 $s2ProjectileVerifier = Join-Path $repoRoot 'tools\verify-s2-projectile.ps1'
@@ -61,7 +63,7 @@ $s2PadAimVerifier = Join-Path $repoRoot 'tools\verify-s2-pad-aim.ps1'
 $s3TargetVerifier = Join-Path $repoRoot 'tools\verify-s3-target.ps1'
 $s3ControlMenuVerifier = Join-Path $repoRoot 'tools\verify-s3-control-menu.ps1'
 $s3ArmorVerifier = Join-Path $repoRoot 'tools\verify-s3-armor.ps1'
-foreach ($requiredProjectPath in @($hullAssetSource, $hullAssetGenerator, $turretAssetSource, $turretAssetGenerator, $inputHudGenerator, $s2AngleVerifier, $s2ProjectileVerifier, $s2PadAimVerifier, $s3TargetVerifier, $s3ControlMenuVerifier, $s3ArmorVerifier)) {
+foreach ($requiredProjectPath in @($hullAssetSource, $hullAssetGenerator, $turretAssetSource, $turretAssetGenerator, $heavyTankTestAssetSource, $heavyTankTestAssetGenerator, $inputHudGenerator, $s2AngleVerifier, $s2ProjectileVerifier, $s2PadAimVerifier, $s3TargetVerifier, $s3ControlMenuVerifier, $s3ArmorVerifier)) {
     if (-not (Test-Path -LiteralPath $requiredProjectPath -PathType Leaf)) {
         throw "Required project file is missing: $requiredProjectPath"
     }
@@ -101,6 +103,11 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'src\main.c') -Destination $workSour
 
 & $turretAssetGenerator `
     -SourcePath $turretAssetSource `
+    -OutputDirectory $workRoot `
+    -Gfx4SnesPath $gfx4SnesPath
+
+& $heavyTankTestAssetGenerator `
+    -SourcePath $heavyTankTestAssetSource `
     -OutputDirectory $workRoot `
     -Gfx4SnesPath $gfx4SnesPath
 
@@ -191,6 +198,7 @@ foreach ($symbol in $sourceRomSymbols) {
 }
 
 $assetBanks = @{
+    heavyTankTestTiles = 4
     hullPlaceholderTiles = 5
     inputHudTiles = 6
     turretPlaceholderTiles = 7
@@ -207,6 +215,7 @@ foreach ($entry in $assetBanks.GetEnumerator()) {
 
 Write-Output 'S2_BANK_LAYOUT_VERIFY=PASS'
 Write-Output 'CODE_BANK=00'
+Write-Output 'HEAVY_TANK_TEST_ASSET_BANK=04'
 Write-Output 'HULL_ASSET_BANK=05'
 Write-Output 'INPUT_HUD_ASSET_BANK=06'
 Write-Output 'TURRET_ASSET_BANK=07'

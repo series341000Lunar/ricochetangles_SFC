@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "name": "s3-02-static-enemy-perpendicular-penetration",
+  "name": "s3-02r1-heavy-silhouette-gameplay-preservation",
   "platform": "snes",
   "romPath": "build/rom/ricochetangles_s0_hello.sfc",
   "symbolPath": "build/work/ricochetangles_s0_hello.sym",
@@ -10,8 +10,8 @@
     "captureArgs": "build/romdev/s3-01/capture-args.json",
     "checkArgs": "build/romdev/s3-01/check-args.json",
     "golden": "build/romdev/s3-01/golden.json",
-    "runAScreenshot": "build/romdev/s3-01/run-a-frame110.png",
-    "runBScreenshot": "build/romdev/s3-01/run-b-frame110.png"
+    "runAScreenshot": "build/romdev/s3-01/run-a-frame1100.png",
+    "runBScreenshot": "build/romdev/s3-01/run-b-frame1100.png"
   },
   "symbols": {
     "enemy": "tccs_src/main.asm_enemy",
@@ -28,6 +28,21 @@
     "enemy_hit_flash": {
       "symbol": "enemy",
       "relativeOffset": 8,
+      "length": 1
+    },
+    "enemy_class_id": {
+      "symbol": "enemy",
+      "relativeOffset": 9,
+      "length": 1
+    },
+    "enemy_max_hp": {
+      "symbol": "enemy",
+      "relativeOffset": 6,
+      "length": 1
+    },
+    "enemy_active": {
+      "symbol": "enemy",
+      "relativeOffset": 7,
       "length": 1
     },
     "enemy_hit_count": {
@@ -59,32 +74,73 @@
   "inputScript": [
     { "atFrame": 0, "ports": [{}, {}] },
     { "atFrame": 60, "ports": [{ "start": true }, {}] },
-    { "atFrame": 61, "ports": [{}, {}] },
-    { "atFrame": 62, "ports": [{ "down": true }, {}] },
-    { "atFrame": 63, "ports": [{}, {}] },
-    { "atFrame": 64, "ports": [{ "right": true }, {}] },
     { "atFrame": 65, "ports": [{}, {}] },
-    { "atFrame": 66, "ports": [{ "start": true }, {}] },
-    { "atFrame": 67, "ports": [{}, {}] },
-    { "atFrame": 68, "ports": [{}, { "right": true }] },
-    { "atFrame": 69, "ports": [{}, { "right": true, "b": true }] },
-    { "atFrame": 70, "ports": [{}, { "right": true }] },
-    { "atFrame": 110, "ports": [{}, {}] }
+    { "atFrame": 70, "ports": [{ "down": true }, {}] },
+    { "atFrame": 75, "ports": [{}, {}] },
+    { "atFrame": 80, "ports": [{ "right": true }, {}] },
+    { "atFrame": 85, "ports": [{}, {}] },
+    { "atFrame": 90, "ports": [{ "start": true }, {}] },
+    { "atFrame": 95, "ports": [{}, {}] },
+    { "atFrame": 100, "ports": [{}, { "right": true }] },
+    { "atFrame": 105, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 110, "ports": [{}, { "right": true }] },
+    { "atFrame": 155, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 160, "ports": [{}, { "right": true }] },
+    { "atFrame": 205, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 210, "ports": [{}, { "right": true }] },
+    { "atFrame": 255, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 260, "ports": [{}, { "right": true }] },
+    { "atFrame": 305, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 310, "ports": [{}, { "right": true }] },
+    { "atFrame": 355, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 360, "ports": [{}, { "right": true }] },
+    { "atFrame": 405, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 410, "ports": [{}, { "right": true }] },
+    { "atFrame": 455, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 460, "ports": [{}, { "right": true }] },
+    { "atFrame": 505, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 510, "ports": [{}, { "right": true }] },
+    { "atFrame": 555, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 560, "ports": [{}, { "right": true }] },
+    { "atFrame": 605, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 610, "ports": [{}, { "right": true }] },
+    { "atFrame": 655, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 660, "ports": [{}, { "right": true }] },
+    { "atFrame": 705, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 710, "ports": [{}, { "right": true }] },
+    { "atFrame": 755, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 760, "ports": [{}, { "right": true }] },
+    { "atFrame": 805, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 810, "ports": [{}, { "right": true }] },
+    { "atFrame": 855, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 860, "ports": [{}, { "right": true }] },
+    { "atFrame": 905, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 910, "ports": [{}, { "right": true }] },
+    { "atFrame": 955, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 960, "ports": [{}, { "right": true }] },
+    { "atFrame": 1005, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 1010, "ports": [{}, { "right": true }] },
+    { "atFrame": 1055, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 1060, "ports": [{}, { "right": true }] },
+    { "atFrame": 1100, "ports": [{}, {}] }
   ],
   "checkpoints": [
     {
-      "frame": 60,
+      "frame": 50,
       "label": "initial",
       "assertions": [
-        { "field": "enemy_hp", "expectedHex": "03" },
+        { "field": "enemy_hp", "expectedHex": "14" },
+        { "field": "enemy_max_hp", "expectedHex": "14" },
+        { "field": "enemy_active", "expectedHex": "01" },
+        { "field": "enemy_class_id", "expectedHex": "01" },
         { "field": "enemy_hit_count", "expectedHex": "00" }
       ]
     },
     {
-      "frame": 96,
+      "frame": 140,
       "label": "hit",
       "assertions": [
-        { "field": "enemy_hp", "expectedHex": "02" },
+        { "field": "enemy_hp", "expectedHex": "13" },
         { "field": "enemy_hit_count", "expectedHex": "01" },
         { "field": "armor_face", "expectedHex": "01" },
         { "field": "armor_impact_angle", "expectedHex": "00" },
@@ -92,11 +148,12 @@
       ]
     },
     {
-      "frame": 110,
+      "frame": 1100,
       "label": "final",
       "assertions": [
-        { "field": "enemy_hp", "expectedHex": "02" },
-        { "field": "enemy_hit_count", "expectedHex": "01" },
+        { "field": "enemy_hp", "expectedHex": "00" },
+        { "field": "enemy_active", "expectedHex": "00" },
+        { "field": "enemy_hit_count", "expectedHex": "14" },
         { "field": "armor_face", "expectedHex": "01" },
         { "field": "armor_impact_angle", "expectedHex": "00" },
         { "field": "armor_result", "expectedHex": "02" },

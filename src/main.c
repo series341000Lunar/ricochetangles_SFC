@@ -22,6 +22,14 @@
 #define PROJECTILE_MIN_Y 56
 #define PROJECTILE_MAX_Y 223
 
+#define ENEMY_INITIAL_X 208
+#define ENEMY_INITIAL_Y 144
+#define ENEMY_INITIAL_HEADING 128
+#define ENEMY_MAX_HP 3
+#define ENEMY_HITBOX_HALF_WIDTH 13
+#define ENEMY_HITBOX_HALF_HEIGHT 13
+#define ENEMY_HIT_FLASH_FRAMES 6
+
 #define AIM_GAIN 1
 #define AIM_DEADZONE 5
 #define INITIAL_AIM_DISTANCE 48
@@ -45,6 +53,7 @@
 #define TURRET_OAM_ID 24
 #define CURSOR_OAM_ID 28
 #define PROJECTILE_OAM_BASE 32
+#define ENEMY_OAM_ID 48
 #define HULL_GFX_VRAM_ADDRESS 0x0000
 #define HULL_GFX_BYTES 8192
 #define INPUT_HUD_GFX_VRAM_ADDRESS 0x1000
@@ -90,6 +99,17 @@ typedef struct
     u8 active;
 } ProjectileState;
 
+typedef struct
+{
+    u16 positionX;
+    u16 positionY;
+    u8 heading;
+    u8 hp;
+    u8 maxHp;
+    u8 active;
+    u8 hitFlashFrames;
+} EnemyState;
+
 typedef enum
 {
     AIM_MODE_MOUSE = 0,
@@ -102,6 +122,8 @@ static TurretState turret;
 static AimState aim;
 static AimMode aimMode;
 static ProjectileState projectiles[MAX_PLAYER_SHELLS];
+static EnemyState enemy;
+static u8 enemyHitCount;
 static u8 fireCooldown;
 static u8 previousFireHeld;
 static u8 fireInputArmed;
@@ -113,6 +135,7 @@ static char aimStatusLine[20];
 static char inputStatusLine[25];
 static char aimInputStatusLine[9];
 static char gunStatusLine[20];
+static char enemyStatusLine[13];
 
 static const s16 quarterSin[65] = {
     0, 6, 13, 19, 25, 31, 38, 44,
@@ -387,7 +410,48 @@ static void initializeProjectiles(void)
     }
 }
 
-static void updateProjectiles(void)
+static void initializeEnemy(void)
+{
+    enemy.positionX = (u16)ENEMY_INITIAL_X << FIXED_SHIFT;
+    enemy.positionY = (u16)ENEMY_INITIAL_Y << FIXED_SHIFT;
+    enemy.heading = ENEMY_INITIAL_HEADING;
+    enemy.hp = ENEMY_MAX_HP;
+    enemy.maxHp = ENEMY_MAX_HP;
+    enemy.active = 1;
+    enemy.hitFlashFrames = 0;
+    enemyHitCount = 0;
+}
+
+static u8 projectileHitsEnemy(u16 pixelX, u16 pixelY, const EnemyState *enemy)
+{
+    u16 enemyX;
+    u16 enemyY;
+
+    if (enemy->active == 0)
+    {
+        return 0;
+    }
+
+    enemyX = enemy->positionX >> FIXED_SHIFT;
+    enemyY = enemy->positionY >> FIXED_SHIFT;
+    return pixelX >= enemyX - ENEMY_HITBOX_HALF_WIDTH &&
+        pixelX <= enemyX + ENEMY_HITBOX_HALF_WIDTH &&
+        pixelY >= enemyY - ENEMY_HITBOX_HALF_HEIGHT &&
+        pixelY <= enemyY + ENEMY_HITBOX_HALF_HEIGHT;
+}
+
+static void damageEnemy(EnemyState *enemy)
+{
+    enemy->hp--;
+    enemyHitCount++;
+    enemy->hitFlashFrames = ENEMY_HIT_FLASH_FRAMES;
+    if (enemy->hp == 0)
+    {
+        enemy->active = 0;
+    }
+}
+
+static void updateProjectiles(EnemyState *enemy)
 {
     u8 index;
     u16 pixelX;
@@ -409,11 +473,26 @@ static void updateProjectiles(void)
 
         pixelX = projectiles[index].positionX >> FIXED_SHIFT;
         pixelY = projectiles[index].positionY >> FIXED_SHIFT;
+        if (projectileHitsEnemy(pixelX, pixelY, enemy) != 0)
+        {
+            projectiles[index].active = 0;
+            damageEnemy(enemy);
+            continue;
+        }
+
         if (pixelX < PROJECTILE_MIN_X || pixelX > PROJECTILE_MAX_X ||
             pixelY < PROJECTILE_MIN_Y || pixelY > PROJECTILE_MAX_Y)
         {
             projectiles[index].active = 0;
         }
+    }
+}
+
+static void updateEnemyHitFlash(EnemyState *enemy)
+{
+    if (enemy->hitFlashFrames > 0)
+    {
+        enemy->hitFlashFrames--;
     }
 }
 
@@ -734,6 +813,23 @@ static void updateProjectileSprites(void)
     }
 }
 
+static void updateEnemySprite(const EnemyState *enemy)
+{
+    if (enemy->active == 0 ||
+        (enemy->hitFlashFrames != 0 && (enemy->hitFlashFrames & 1) == 0))
+    {
+        oamSetVisible(ENEMY_OAM_ID, OBJ_HIDE);
+        return;
+    }
+
+    oamSetGfxOffset(ENEMY_OAM_ID, hullVisualTile(headingVisualFrame(enemy->heading)));
+    oamSetXY(
+        ENEMY_OAM_ID,
+        (s16)(enemy->positionX >> FIXED_SHIFT) - 16,
+        (s16)(enemy->positionY >> FIXED_SHIFT) - 16);
+    oamSetVisible(ENEMY_OAM_ID, OBJ_SHOW);
+}
+
 static void updateInputHudSprites(u16 pad)
 {
     oamSetGfxOffset(HUD_UP_OAM_ID, inputButtonTile(0, (pad & KEY_UP) != 0));
@@ -953,6 +1049,33 @@ static void formatGunStatusLine(u8 fireHeld, char *output)
     output[19] = '\0';
 }
 
+static void formatEnemyStatusLine(const EnemyState *enemy, char *output)
+{
+    output[0] = 'E';
+    output[1] = 'N';
+    output[2] = ' ';
+    output[3] = 'H';
+    output[4] = 'P';
+    output[5] = hexDigits[enemy->hp & 0x0F];
+    output[6] = ' ';
+    if (enemy->active != 0)
+    {
+        output[7] = 'H';
+        output[8] = 'I';
+        output[9] = 'T';
+        formatHex8(enemyHitCount, &output[10]);
+    }
+    else
+    {
+        output[7] = 'D';
+        output[8] = 'E';
+        output[9] = 'S';
+        output[10] = 'T';
+        output[11] = ' ';
+    }
+    output[12] = '\0';
+}
+
 static void initializePlayerSprites(void)
 {
     u8 index;
@@ -993,6 +1116,17 @@ static void initializePlayerSprites(void)
         oamSet(oamId, 0, 0, 3, 0, 0, INPUT_HUD_SHELL_TILE, 1);
         oamSetEx(oamId, OBJ_SMALL, OBJ_HIDE);
     }
+
+    oamSet(
+        ENEMY_OAM_ID,
+        ENEMY_INITIAL_X - 16,
+        ENEMY_INITIAL_Y - 16,
+        2,
+        0,
+        0,
+        hullVisualTile(headingVisualFrame(ENEMY_INITIAL_HEADING)),
+        0);
+    oamSetEx(ENEMY_OAM_ID, OBJ_LARGE, OBJ_SHOW);
 }
 
 int main(void)
@@ -1019,6 +1153,7 @@ int main(void)
     turret.targetHeading = hull.heading;
     aimMode = AIM_MODE_MOUSE;
     initializeProjectiles();
+    initializeEnemy();
     fireCooldown = 0;
     resetMainGunInput();
     lastShotHeading = turret.heading;
@@ -1034,18 +1169,20 @@ int main(void)
     bgSetDisable(2);
 
     consoleDrawText(13, 0, "THR:N TURN:N");
-    consoleDrawText(13, 1, "S2-02A");
+    consoleDrawText(13, 1, "S3-01 ");
     consoleDrawText(0, 2, "H:00 HF:00 S:+0000");
     consoleDrawText(0, 3, "T:00 TG:00 TF:00");
     consoleDrawText(0, 4, "AIM:M AX:B0 AY:90");
     consoleDrawText(0, 5, "P1:0000 P2:M0 U00 V00");
     consoleDrawText(0, 6, "MB0 S0  ");
     consoleDrawText(0, 7, "GUN F0 CD00 SH0 H00");
+    consoleDrawText(0, 8, "EN HP3 HIT00");
 
     initMouse(MOUSE_SLOW);
     WaitForVBlank();
     updateHullSprites(&hull);
     updateTurretAndCursorSprites(&hull, &turret);
+    updateEnemySprite(&enemy);
     setScreenOn();
 
     while (1)
@@ -1073,6 +1210,13 @@ int main(void)
         }
 
         updateAimMode(padDown);
+        if ((padDown & KEY_START) != 0)
+        {
+            initializeProjectiles();
+            initializeEnemy();
+            fireCooldown = 0;
+            resetMainGunInput();
+        }
         pad2Gameplay = mouseConnected == 0 ? pad2 : 0;
 
         if (aimMode == AIM_MODE_MOUSE)
@@ -1099,12 +1243,14 @@ int main(void)
             updateTurretTargetFromPad2(pad2Gameplay, &turret);
         }
         updateTurretHeading(&turret);
-        updateProjectiles();
+        updateProjectiles(&enemy);
         updateMainGun(fireHeld, &hull, &turret);
         updateHullSprites(&hull);
         updateTurretAndCursorSprites(&hull, &turret);
         updateProjectileSprites();
+        updateEnemySprite(&enemy);
         updateInputHudSprites(pad);
+        updateEnemyHitFlash(&enemy);
 
         formatControlStatusLine(&hull, controlStatusLine);
         consoleDrawText(13, 0, "%s", controlStatusLine);
@@ -1132,6 +1278,9 @@ int main(void)
 
         formatGunStatusLine(fireHeld, gunStatusLine);
         consoleDrawText(0, 7, "%s", gunStatusLine);
+
+        formatEnemyStatusLine(&enemy, enemyStatusLine);
+        consoleDrawText(0, 8, "%s", enemyStatusLine);
     }
 
     return 0;

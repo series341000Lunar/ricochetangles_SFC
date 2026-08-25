@@ -37,22 +37,19 @@ RicochetAngles
 현재 개발 상태:
 
 ```text
-S2 — INDEPENDENT TURRET
+S3 — CORE COMBAT
 ```
 
 현재 목표는 게임 전체 구현이 아니다.
 
-S0는 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. S1도 같은 날 사용자 최종 확인과 GO 결정으로 `PASS / CLOSED`됐다. S2-01은 사용자 확인으로 PASS됐으며, 현재 목표는 S2-02A의 Mouse/P2 Standard Pad 대체 조준 입력 구조 검증이다.
+S0와 S1은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. S2-02A는 사용자가 P1 SELECT Aim Mode 전환, P2 Pad 8방향 조준과 P2 B 발사를 직접 확인하여 2026-08-25 `PASS / USER CONFIRMED`됐다. 사용자의 GO 결정에 따라 S2도 `PASS / CLOSED`됐으며, 현재 목표는 S3-01의 정적 Enemy와 Player Projectile hit foundation 검증이다.
 
 ```text
-P2 SNES MOUSE OR P2 STANDARD PAD
-→ DEVICE-SPECIFIC AIM INTERPRETATION
-→ TURRET TARGET HEADING
-→ LIMITED TURRET TRAVERSE
-→ INDEPENDENT TURRET VISUAL
-→ COMMON FIRE-HELD SIGNAL
-→ CURRENT TURRET HEADING SHOT
-→ STRAIGHT PROJECTILE V0
+PLAYER PROJECTILE
+→ STATIC ENEMY AABB
+→ HIT ONCE
+→ HP -1
+→ DESTROYED AT HP 0
 ```
 
 Local Development Environment Contract
@@ -96,7 +93,7 @@ C:\msys64\msys2_shell.cmd
 
 관련 실행파일과 환경을 찾을 때 다른 MSYS2 설치본을 먼저 탐색하지 않는다.
 
-S0에서 검증한 위 설치를 현재 S2에서도 기본 환경으로 사용한다.
+S0에서 검증한 위 설치를 현재 S3에서도 기본 환경으로 사용한다.
 
 위 경로가 존재하지 않거나 필요한 package가 없는 경우 임의로 다른 MSYS2/Cygwin/WSL 환경으로 우회하지 말고 현재 환경 상태와 필요한 package를 보고한다.
 
@@ -252,16 +249,16 @@ PVSNESLIB HOME IN MSYS2
 /c/snesdev/pvsneslib-4.6.0
 
 COMPLETED GATE
-S1 — DRIVE — PASS / CLOSED / USER GO APPROVED 2026-08-23
+S2 — INDEPENDENT TURRET — PASS / CLOSED / USER GO APPROVED 2026-08-25
 
 CURRENT GATE
-S2 — INDEPENDENT TURRET
+S3 — CORE COMBAT
 
 CURRENT STATUS
-S2-02A — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-01 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S2-02A — Alternate Aim Input / P2 Pad V0
+S3-01 — Static Enemy Target & Projectile Hit V0
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -564,7 +561,7 @@ DATE: 2026-08-23
 
 # 11. Initial Toolchain Direction
 
-S0에서 확정한 기본 기술 방향은 현재 S2에서도 유지한다.
+S0에서 확정한 기본 기술 방향은 현재 S3에서도 유지한다.
 
 ```text
 C 중심 개발
@@ -731,7 +728,7 @@ S1에서도 P2 Mouse gameplay, Turret, Aim Cursor, Fire, Projectile, Armor, Rico
 
 ---
 
-# 17. Current S2 Direction — Active Gate Contract
+# 17. Completed S2 / Current S3 Direction
 
 S2-01의 다음 독립 포탑 구조는 `PASS / USER CONFIRMED 2026-08-23`다.
 
@@ -754,7 +751,11 @@ S2-02는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. MesenCE와 bsnes boot, clean
 
 현재 S2-02A는 기존 Mouse 조준/발사를 그대로 보존하면서 P2 Standard Pad를 대체 조준 장치로 추가한다. 기본 Mode는 Mouse이며 P1 SELECT press edge로 Pad2와 전환한다. Pad2 D-pad는 축별로 독립 해석한 8방향 target heading과 Hull 기준 48 px indicator를 사용하고, P2 B는 Mouse Left와 같은 장치 독립 `fireHeld` 경로로 들어간다. Mode 전환은 발사를 disarm하고 release를 관찰하기 전까지 재발사를 막는다.
 
-S2-02A는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. clean/deterministic build, ROM sanity, 정적 8방향/상반축/fire 계약, MesenCE의 Mouse/Standard Controller 구성 boot와 bsnes boot는 확인했다. P2 Pad host mapping이 비어 있어 8방향 조준, twin-stick 동시 입력, P2 B 발사와 Mouse 조작 회귀는 사용자 확인 전까지 PASS가 아니다. 실제 Super Famicom도 계속 `UNVERIFIED`다.
+사용자는 P1 SELECT의 `AIM:M`/`AIM:P` 전환, `AIM:P`의 P2 D-pad 8방향 Turret Aim과 P2 B Main Gun Fire를 직접 확인했다. 따라서 S2-02A는 `PASS / USER CONFIRMED 2026-08-25`다. 이 확인과 사용자 GO 결정으로 S2는 `PASS / CLOSED / USER GO APPROVED 2026-08-25`다. P1+P2 동시 조작과 Aim Mode 전환 accidental-fire 방지는 이후 Gate의 지속 regression 항목으로 유지한다. 이 문장은 사용자가 확인하지 않은 세부 시나리오를 과거 시점의 `USER CONFIRMED`로 확장하지 않는다.
+
+현재 S3-01은 정지한 Enemy Tank 1대에 대한 Player Projectile 충돌 foundation만 검증한다. Enemy는 위치, heading, HP 3, active와 짧은 hit blink 상태를 가지며 움직임, AI, 포탑, 발사 기능은 없다. 충돌은 Projectile 중심점과 회전하지 않는 단순 AABB로 처리하고, 유효한 hit는 shell을 즉시 비활성화한 뒤 damage 1을 정확히 한 번 적용한다. HP 0에서 Enemy OBJ를 숨기며 P1 START는 DEV/diagnostic reset으로 Enemy와 Projectile pool을 초기화한다.
+
+S3-01 구현 직후 상태는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. 사용자가 Miss, Hit, 3-hit destruction, Reset, Mouse hit와 PAD2 hit를 직접 확인하기 전에는 PASS로 승격하지 않는다. Armor Face, Impact Angle, Ricochet, Non-Penetration과 Penetration은 S3-01 범위 밖이며 사용자 승인 없이 S3-02로 진행하지 않는다.
 
 실제 조작감이 좋지 않다면 입력 방식을 변경할 수 있다.
 
@@ -945,7 +946,7 @@ one command
 * Build manifest
 * Deterministic output check
 
-S0에서는 필요한 최소 검증만 구현했다. 현재 S2에서도 현재 Gate에 필요한 검증만 추가한다.
+S0에서는 필요한 최소 검증만 구현했다. 현재 S3에서도 현재 Gate에 필요한 검증만 추가한다.
 
 전체 미래 검증 체계를 선제적으로 만들지 않는다.
 
@@ -1161,7 +1162,7 @@ HTML canonical Map/Data
 
 를 검토한다.
 
-현재 S2에서도 Map 작업을 하지 않는다.
+현재 S3-01에서도 Map 작업을 하지 않는다.
 
 ---
 
@@ -1179,7 +1180,7 @@ C — Immobilized Last Stand
 
 SFC에서도 세 Phase가 서로 다른 문제를 요구한다는 의미를 우선 보존한다.
 
-세부 Boss 규칙을 현재 S2 코드에 미리 넣지 않는다.
+세부 Boss 규칙을 현재 S3-01 코드에 미리 넣지 않는다.
 
 BOSS_01 Combat Contract를 `AGENTS.md`에 복제하지 않는다.
 
@@ -1231,7 +1232,7 @@ PC Emulator
 
 Standalone Physical Cartridge 제작은 Stage가 실제 하드웨어에서 완주 가능한 수준에 도달한 이후에만 검토한다.
 
-현재 S2에서는 PCB, Flash ROM, EPROM, Shell을 설계하지 않는다.
+현재 S3-01에서는 PCB, Flash ROM, EPROM, Shell을 설계하지 않는다.
 
 ---
 
@@ -1486,13 +1487,17 @@ Agent / Codex가 가능한 한 담당할 영역:
 
 15. S1-02R — Hull Scale & Readability Revision — PASS / USER CONFIRMED 2026-08-23
 
-16. S2 — INDEPENDENT TURRET — ACTIVE
+16. S2 — INDEPENDENT TURRET — PASS / CLOSED / USER GO APPROVED 2026-08-25
 
 17. S2-01 — Virtual Aim & Independent Turret V0 — PASS / USER CONFIRMED 2026-08-23
 
-18. S2-02 — Main Gun Fire & Projectile V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
+18. S2-02 — Main Gun Fire & Projectile V0 — IMPLEMENTED
 
-19. S2-02A — Alternate Aim Input / P2 Pad V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
+19. S2-02A — Alternate Aim Input / P2 Pad V0 — PASS / USER CONFIRMED 2026-08-25
+
+20. S3 — CORE COMBAT — ACTIVE
+
+21. S3-01 — Static Enemy Target & Projectile Hit V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
 S0는 MesenCE 2.2.1과 bsnes nightly의 사용자 확인, Delta iOS 추가 호환성 확인, 결정적 clean build와 ROM sanity를 근거로 `PASS / CLOSED`되었다.
@@ -1505,16 +1510,19 @@ S0 종료 시점의 ROM/build/input 구현은 `KNOWN GOOD S0 BASELINE`이다. �
 
 # 45. Explicitly Forbidden Premature Work
 
-현재 S2-02A 범위에서는 다음 작업을 선행하지 않는다.
+현재 S3-01 범위에서는 다음 작업을 선행하지 않는다.
 
 ```text
-NO ENEMY OR TARGET
-NO COLLISION
+NO ENEMY AI OR MOVEMENT
+NO ENEMY TURRET OR FIRE
+NO TANK-vs-TANK COLLISION
 NO RELOAD SYSTEM BEYOND THE MINIMAL COOLDOWN
 NO RECOIL
-NO ARMOR
+NO ARMOR FACE OR IMPACT ANGLE
 NO RICOCHET
-NO ENEMY
+NO NON-PENETRATION OR PENETRATION
+NO AMMO TYPE
+NO PLAYER HP
 NO MAP
 NO CAMERA
 NO STAGE
@@ -1625,21 +1633,21 @@ STATUS:
 EXPERIMENTAL / DROP-OK
 
 CURRENT GATE:
-S2 — INDEPENDENT TURRET
+S3 — CORE COMBAT
 
 CURRENT OBJECTIVE:
-Compare Mouse and P2 Standard Pad aim through one shared
-Turret, fire-edge and straight Projectile path.
+Verify that a real Player Projectile collides with one static
+Enemy AABB and applies exactly one damage per shell.
 
 COMPLETED GATE:
-S1 — DRIVE — PASS / CLOSED / USER GO APPROVED 2026-08-23
+S2 — INDEPENDENT TURRET — PASS / CLOSED / USER GO APPROVED 2026-08-25
 
 CURRENT STATUS:
-S2-02A — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-01 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK:
-S2-02A — Alternate Aim Input / P2 Pad V0
+S3-01 — Static Enemy Target & Projectile Hit V0
 
-DO NOT MARK S2-02A PASS OR PROCEED TO S2 CLOSE, S3,
-ENEMY, COLLISION, ARMOR OR RICOCHET WITHOUT USER CONFIRMATION.
+DO NOT MARK S3-01 PASS OR PROCEED TO S3-02, ARMOR FACE,
+IMPACT ANGLE, RICOCHET, NON-PEN OR PENETRATION WITHOUT USER CONFIRMATION.
 ```

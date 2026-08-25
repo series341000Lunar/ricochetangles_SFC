@@ -2,8 +2,8 @@
 
 **현대의 생성형 AI·에이전틱 코딩·자동화 기술을 활용하여 실제 Super Famicom / SNES 하드웨어에서 동작하는 RicochetAngles 신작을 만들 수 있는지 검증하는 독립 Experimental 프로젝트입니다.**
 
-> **현재 상태:** `S2 — INDEPENDENT TURRET / S2-02A IMPLEMENTED / USER PLAYTEST REQUIRED`
-> **완료 Gate:** `S1 — DRIVE / PASS / CLOSED / USER GO APPROVED 2026-08-23`
+> **현재 상태:** `S3 — CORE COMBAT / S3-01 IMPLEMENTED / USER PLAYTEST REQUIRED`
+> **완료 Gate:** `S2 — INDEPENDENT TURRET / PASS / CLOSED / USER GO APPROVED 2026-08-25`
 > **Project Status:** `EXPERIMENTAL / DROP-OK`
 > **Target Hardware:** Super Famicom / SNES
 > **Repository:** `series341000Lunar/ricochetangles_SFC`
@@ -83,47 +83,39 @@ C / 65816 / SNES Hardware
 
 # 현재 개발 단계
 
-## S2 — INDEPENDENT TURRET
+## S3 — CORE COMBAT
 
-S0 — BOOT & INPUT과 S1 — DRIVE는 2026-08-23 사용자 GO 결정으로 각각 `PASS / CLOSED`됐습니다. S1-01, S1-01R, S1-02와 S1-02R의 이력과 승인된 이동 수치는 Known Good Baseline으로 유지합니다.
+S0 — BOOT & INPUT과 S1 — DRIVE는 2026-08-23 사용자 GO 결정으로 각각 `PASS / CLOSED`됐습니다. 사용자는 2026-08-25 S2-02A의 Aim Mode 전환, P2 Pad 8방향 Turret Aim과 P2 B Main Gun Fire를 직접 확인했고 S2 진행 결과에 GO를 승인했습니다. 따라서 S2도 `PASS / CLOSED`됐습니다.
 
 현재 작업:
 
 ```text
-S2-02A — Alternate Aim Input / P2 Pad V0
+S3-01 — Static Enemy Target & Projectile Hit V0
 IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
-현재 S2-02A 검증 범위:
+현재 S3-01 검증 범위:
 
 ```text
-P2 SNES MOUSE OR P2 STANDARD PAD
-→ DEVICE-SPECIFIC AIM INTERPRETATION
-→ TURRET TARGET HEADING
-→ LIMITED TURRET TRAVERSE
-→ INDEPENDENT TURRET VISUAL
-→ COMMON FIRE-HELD SIGNAL
-→ CURRENT TURRET HEADING SHOT
-→ STRAIGHT PROJECTILE V0
+PLAYER PROJECTILE
+→ STATIC ENEMY AABB
+→ HIT ONCE
+→ HP -1
+→ DESTROYED AT HP 0
 ```
 
-### S2-01에서 하지 않는 것
+### S3-01에서 하지 않는 것
 
-P2 Mouse 좌우 button은 raw diagnostic만 유지합니다. 이번 작업에는 다음을 구현하지 않습니다.
+이번 작업은 정적 Enemy에 대한 Projectile collision foundation만 구현합니다.
 
-* Fire
-* Projectile
-* Reload / Recoil / Muzzle flash
-* Armor / Ricochet
-* Enemy
-* Map / Camera / Stage
-* Boss
-* 32-direction upgrade
+* Enemy AI / 이동 / Turret / Fire
+* Player HP / Tank-vs-Tank collision
+* Armor Face / Impact Angle
+* Ricochet / Non-Penetration / Penetration
+* Ammo Type / Reload / Recoil / Explosion
+* Map / Camera / Stage / Boss
 * Final art / Audio
-* Physical Cartridge
-* Custom Controller
-
-사용자가 S2-01의 Cursor, 독립 Turret, Hull 이동과 입력 회귀가 모두 정상이라고 확인했습니다. S2-02 구현 지시에 따라 주포/Projectile V0를 추가했으며, 사용자 조작 확인 전까지 S2-02를 PASS로 승격하지 않습니다.
+* Real hardware / Physical Cartridge / Custom Controller
 
 ---
 
@@ -185,7 +177,7 @@ PC Emulator에서 정상적인 SFC ROM을 반복 빌드하고 기본 입력을 �
 
 ---
 
-## S2 — INDEPENDENT TURRET — ACTIVE / S2-02A USER PLAYTEST REQUIRED
+## S2 — INDEPENDENT TURRET — PASS / CLOSED
 
 초기 입력 후보:
 
@@ -773,12 +765,33 @@ REAL HARDWARE: UNVERIFIED
 Mouse Left와 P2 Pad B는 장치 독립적인 `fireHeld`로 변환된 뒤 같은 release/rising-edge, 18-frame cooldown, 현재 `turret.heading` snapshot과 4-slot Projectile pool을 사용합니다. Build는 8방향/상반축/idle hold/mode safety/공통 발사 계약과 기존 angle, projectile, bank layout, ROM sanity를 함께 검사합니다.
 
 ```text
-S2-02A IMPLEMENTED
+S2-02A PASS / USER CONFIRMED 2026-08-25
+REAL HARDWARE: UNVERIFIED
+```
+
+구현 직후 MesenCE에서 P2 Mouse 구성과 P2 Standard Controller 구성의 동일 ROM boot 및 장치 판별을 확인했고, bsnes nightly에서는 `S2-02A`, `AIM:M`, Hull/Turret/Cursor와 diagnostic 화면 부팅을 확인했습니다. 당시 비어 있던 P2 Pad host mapping 때문에 세부 조작은 `USER PLAYTEST REQUIRED`로 남겼습니다.
+
+사용자는 2026-08-25 P1 SELECT의 `AIM:M`/`AIM:P` 전환, `AIM:P`의 P2 D-pad 8방향 Turret Aim과 P2 B Main Gun Fire를 직접 확인했습니다. 따라서 S2-02A는 `PASS / USER CONFIRMED 2026-08-25`이며, 사용자 GO 결정에 따라 S2는 `PASS / CLOSED / USER GO APPROVED 2026-08-25`입니다. P1+P2 동시 조작과 Aim Mode 전환 accidental-fire 방지는 이후에도 regression 항목으로 유지합니다. 사용자가 확인하지 않은 다른 세부 항목을 과거 시점의 `USER CONFIRMED`로 기록하지 않습니다.
+
+---
+
+## S3-01 Static Enemy Target & Projectile Hit V0
+
+화면 오른쪽 `(208, 144)`에 heading `128`(LEFT), HP 3인 정지 Enemy Tank 1대를 배치합니다. Enemy는 기존 Player Hull 32×32 graphics와 palette를 그대로 재사용하는 large OBJ 1개이며 움직임, AI, Turret과 Fire가 없습니다. 추가 Enemy graphics와 palette data는 각각 0 bytes입니다.
+
+Player Projectile이 이동한 뒤 중심점이 Enemy 중심 기준 half-width/height 13 px의 회전하지 않는 26×26 AABB 안에 있으면 shell을 즉시 비활성화하고 damage 1과 Hit Count 1을 정확히 한 번 적용합니다. HP 0이면 Enemy를 inactive로 만들고 OBJ를 숨깁니다. 유효 hit는 6-frame blink로 표시하며 `EN HP3 HIT00` diagnostic이 HP/누적 hit를 보여줍니다.
+
+P1 START는 DEV/diagnostic reset입니다. Enemy 위치, heading, HP 3, active와 Hit Count 0을 복원하고 Player Projectile pool을 비웁니다. 이 입력은 최종 gameplay mapping이 아닙니다. Collision은 Aim Mode를 모르며 Mouse와 P2 Pad가 같은 Projectile path를 사용합니다. Armor Face, Impact Angle, Ricochet, Non-Penetration, Penetration과 Ammo Type은 구현하지 않았습니다.
+
+```text
+S3-01 IMPLEMENTED
 USER PLAYTEST REQUIRED
 REAL HARDWARE: UNVERIFIED
 ```
 
-MesenCE에서 P2 Mouse 구성과 P2 Standard Controller 구성의 동일 ROM boot 및 장치 판별을 확인했고, 설정은 원래 P2 Mouse로 복원했습니다. P2 Pad의 host key mapping은 비어 있었으므로 8방향 조준, P1+P2 동시 입력, P2 B 발사는 사용자가 mapping 후 직접 확인해야 합니다. Mouse 조준/발사와 S2-02 조작감도 사용자 확인 전까지 PASS로 기록하지 않습니다. bsnes nightly에서는 동일 ROM의 `S2-02A`, `AIM:M`, Hull/Turret/Cursor와 diagnostic 화면 부팅을 확인했습니다.
+자동검증은 Enemy 초기 상태, 직선 hit, miss, shell 1개당 1 damage, 3-hit destruction, reset, 기존 shell speed 4, S2 Aim/Fire regression과 OAM 비중복을 검사합니다. 사용자가 Miss, Hit, 3-hit destruction, Reset, Mouse hit와 PAD2 hit를 직접 확인하기 전에는 S3-01을 PASS로 승격하지 않습니다.
+
+두 번의 clean build가 compiler warning/error 0, `S3_TARGET_VERIFY=PASS`, `ROM_VERIFY=PASS`를 통과했고 동일한 262,144-byte ROM을 생성했습니다. SHA-256은 두 번 모두 `31bca17b059e1e57c7729f47f2662913b661755c9887152fcb07ac2e774d2d82`였으며 Bank 00은 1,624 bytes(4.96%)가 남았습니다. MesenCE와 bsnes nightly에서 `S3-01`, Player Hull/Turret/Cursor, Enemy Tank와 `EN HP3 HIT00`의 정상 boot/표시를 확인했고 bsnes는 60 FPS였습니다. Boot 시 active shell이 없으므로 새 ROM의 Projectile 표시, 실제 hit 결과와 조작 regression은 사용자 수동 검증 전까지 `UNVERIFIED`입니다.
 
 ---
 
@@ -905,20 +918,20 @@ STATUS
 EXPERIMENTAL / DROP-OK
 
 CURRENT GATE
-S2 — INDEPENDENT TURRET
+S3 — CORE COMBAT
 
 CURRENT OBJECTIVE
-Compare Mouse and P2 Standard Pad aim through one shared
-Turret, fire-edge and straight Projectile path.
+Verify one static Enemy AABB receives exactly one damage
+from each valid Player Projectile hit.
 
 COMPLETED GATE
-S1 — DRIVE — PASS / CLOSED / USER GO APPROVED 2026-08-23
+S2 — INDEPENDENT TURRET — PASS / CLOSED / USER GO APPROVED 2026-08-25
 
 CURRENT STATUS
-S2-02A — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-01 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S2-02A — Alternate Aim Input / P2 Pad V0
+S3-01 — Static Enemy Target & Projectile Hit V0
 
-Do not mark S2-02A PASS or proceed to S2 close, S3, Enemy, Collision, Armor or Ricochet without user confirmation.
+Do not mark S3-01 PASS or proceed to S3-02, Armor Face, Impact Angle, Ricochet, Non-Penetration or Penetration without user confirmation.
 ```

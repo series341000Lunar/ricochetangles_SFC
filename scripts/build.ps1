@@ -58,9 +58,10 @@ $inputHudGenerator = Join-Path $repoRoot 'tools\generate-input-hud.ps1'
 $s2AngleVerifier = Join-Path $repoRoot 'tools\verify-s2-angle.ps1'
 $s2ProjectileVerifier = Join-Path $repoRoot 'tools\verify-s2-projectile.ps1'
 $s2PadAimVerifier = Join-Path $repoRoot 'tools\verify-s2-pad-aim.ps1'
-foreach ($requiredProjectPath in @($hullAssetSource, $hullAssetGenerator, $turretAssetSource, $turretAssetGenerator, $inputHudGenerator, $s2AngleVerifier, $s2ProjectileVerifier, $s2PadAimVerifier)) {
+$s3TargetVerifier = Join-Path $repoRoot 'tools\verify-s3-target.ps1'
+foreach ($requiredProjectPath in @($hullAssetSource, $hullAssetGenerator, $turretAssetSource, $turretAssetGenerator, $inputHudGenerator, $s2AngleVerifier, $s2ProjectileVerifier, $s2PadAimVerifier, $s3TargetVerifier)) {
     if (-not (Test-Path -LiteralPath $requiredProjectPath -PathType Leaf)) {
-        throw "Required S2 project file is missing: $requiredProjectPath"
+        throw "Required project file is missing: $requiredProjectPath"
     }
 }
 
@@ -104,6 +105,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'src\main.c') -Destination $workSour
 & $s2AngleVerifier -SourcePath (Join-Path $repoRoot 'src\main.c')
 & $s2ProjectileVerifier -SourcePath (Join-Path $repoRoot 'src\main.c')
 & $s2PadAimVerifier -SourcePath (Join-Path $repoRoot 'src\main.c')
+& $s3TargetVerifier -SourcePath (Join-Path $repoRoot 'src\main.c')
 
 $originalMsystem = [System.Environment]::GetEnvironmentVariable('MSYSTEM', 'Process')
 $originalPvsneslibHome = [System.Environment]::GetEnvironmentVariable('PVSNESLIB_HOME', 'Process')

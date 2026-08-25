@@ -784,12 +784,11 @@ Player Projectile이 이동한 뒤 중심점이 Enemy 중심 기준 half-width/h
 P1 SELECT는 DEV/diagnostic reset입니다. Enemy 위치, heading, HP 3, active와 Hit Count 0을 복원하고 Player Projectile pool을 비웁니다. 이 입력은 최종 gameplay mapping이 아닙니다. Collision은 Aim Mode를 모르며 Mouse와 P2 Pad가 같은 Projectile path를 사용합니다. Armor Face, Impact Angle, Ricochet, Non-Penetration, Penetration과 Ammo Type은 구현하지 않았습니다.
 
 ```text
-S3-01 IMPLEMENTED
-USER PLAYTEST REQUIRED
+S3-01 PASS / USER CONFIRMED 2026-08-25
 REAL HARDWARE: UNVERIFIED
 ```
 
-자동검증은 Enemy 초기 상태, 직선 hit, miss, shell 1개당 1 damage, 3-hit destruction, reset, 기존 shell speed 4, S2 Aim/Fire regression과 OAM 비중복을 검사합니다. 사용자가 Miss, Hit, 3-hit destruction, Reset, Mouse hit와 PAD2 hit를 직접 확인하기 전에는 S3-01을 PASS로 승격하지 않습니다.
+자동검증은 Enemy 초기 상태, 직선 hit, miss, shell 1개당 1 damage, 3-hit destruction, reset, 기존 shell speed 4, S2 Aim/Fire regression과 OAM 비중복을 검사합니다. 사용자는 2026-08-25 Enemy hit와 3회 유효 명중 뒤 destruction을 직접 확인했습니다. 이 기록은 사용자가 이번 확인에서 별도로 열거하지 않은 Miss, Reset 또는 장치별 세부 시나리오까지 확인한 것으로 확장하지 않습니다.
 
 두 번의 clean build가 compiler warning/error 0, `S3_TARGET_VERIFY=PASS`, `ROM_VERIFY=PASS`를 통과했고 동일한 262,144-byte ROM을 생성했습니다. SHA-256은 두 번 모두 `31bca17b059e1e57c7729f47f2662913b661755c9887152fcb07ac2e774d2d82`였으며 Bank 00은 1,624 bytes(4.96%)가 남았습니다. MesenCE와 bsnes nightly에서 `S3-01`, Player Hull/Turret/Cursor, Enemy Tank와 `EN HP3 HIT00`의 정상 boot/표시를 확인했고 bsnes는 60 FPS였습니다. Boot 시 active shell이 없으므로 새 ROM의 Projectile 표시, 실제 hit 결과와 조작 regression은 사용자 수동 검증 전까지 `UNVERIFIED`입니다.
 
@@ -806,13 +805,39 @@ Bank 00 free 28 bytes였던 미완성 초안은 verbose S0/S1 diagnostic formatt
 최종 clean build 2회는 compiler warning/error 0, `S2_PAD_AIM_VERIFY=PASS`, `S3_TARGET_VERIFY=PASS`, `S3_CONTROL_MENU_VERIFY=PASS`, `S2_BANK_LAYOUT_VERIFY=PASS`와 `ROM_VERIFY=PASS`를 모두 통과했습니다. 두 번 모두 262,144-byte ROM과 SHA-256 `a023111225107a8f184e2115e376fe4178412230f84fbb5d170a71f76c93a95f`를 생성했습니다. ROM은 LoROM/SlowROM, ROM only, SRAM none이며 enhancement chip을 사용하지 않습니다.
 
 ```text
-S3-01 — IMPLEMENTED / existing status preserved
-S3-01A-R1 — IMPLEMENTED / USER PLAYTEST REQUIRED
-ARCADE CABINET — USER PLAYTEST REQUIRED FOR THIS ROM
+S3-01 — PASS / USER CONFIRMED 2026-08-25
+S3-01A-R1 — PASS / USER CONFIRMED 2026-08-25
+ARCADE CABINET — ADDITIONAL COMPATIBILITY / TWIN-STICK TEST — PASS / USER CONFIRMED
 REAL SUPER FAMICOM — UNVERIFIED
 ```
 
-MesenCE에서 최신 ROM boot, gameplay, `RicochetAngles` START menu, Resume와 footer를 확인했습니다. bsnes nightly에서는 최신 ROM boot, gameplay, footer와 60 FPS를 확인했습니다. 자동 입력이 두 에뮬레이터의 host Raw Input mapping을 완전히 재현하지 못하므로 PC-LIKE/STICK, Mouse/P2 PAD, menu pause feel과 no-accidental-shot은 정적 검증과 별개로 사용자 수동 검증이 필요합니다. 사용자가 이전 ROM의 Arcade Cabinet boot와 START 존재를 확인했지만 이 ROM의 menu, STICK/P2 PAD twin-stick, fire와 Resume는 다시 확인해야 합니다. Cabinet의 SELECT는 정식 gameplay 경로로 전제하지 않으며 Cabinet은 실제 Super Famicom 검증이 아닙니다.
+MesenCE에서 해당 ROM boot, gameplay, `RicochetAngles` START menu, Resume와 footer를 확인했고 bsnes nightly에서는 boot, gameplay, footer와 60 FPS를 확인했습니다. 사용자는 2026-08-25 START Menu, DRIVE PC-LIKE/STICK, AIM MOUSE/P2 PAD와 Arcade Cabinet 실제 플레이를 직접 확인했습니다. Cabinet의 SELECT는 정식 gameplay 경로로 전제하지 않으며 Cabinet은 실제 Super Famicom 검증이 아닙니다.
+
+---
+
+## S3-02 Armor Face / Impact Angle / Ricochet V0
+
+Enemy heading은 이제 26×20 px local oriented hull rectangle에 실제 의미를 가집니다. local forward half-length는 13 px, local right half-width는 10 px이며 armor face는 `FRONT`, `LEFT`, `RIGHT`, `REAR`입니다. Outward normal은 각각 Enemy heading, heading-64, heading+64, heading+128입니다.
+
+Collision은 Projectile의 이동 전/후 Q8.8 위치를 integer world pixel endpoint로 변환한 segment를 사용합니다. Endpoint를 기존 `sin256`/`cos256` LUT로 Enemy-local forward/right 좌표에 투영하고, 현재 point가 rectangle 안에 들어온 frame에서 crossed boundary를 찾습니다. Corner에서 두 boundary를 함께 넘으면 division 없이 crossing fraction을 정수 교차곱으로 비교해 첫 face 하나만 선택합니다. 저장되는 contact는 integer world-pixel impact point, face, outward normal heading, impact angle과 result입니다. Runtime에는 floating point, `atan2` 또는 `acos`가 없습니다.
+
+Impact angle은 0–255 heading의 quarter-turn인 `0..64`로 저장합니다. `0`은 attack direction과 outward normal이 같은 직각 hit, `64`는 90도 grazing hit입니다. HTML 기준판의 일반 canonical `autoRicochetAngleDegrees=75`를 사용합니다. 75도는 heading unit 53.333…이므로 `>=75°`를 만족하는 첫 discrete unit `54`(75.9375°)부터 RICOCHET입니다. Unit 53(74.53125°)은 PENETRATION이고 equality boundary unit 54는 RICOCHET입니다.
+
+RICOCHET은 Projectile interaction을 끝내고 Enemy HP를 유지하며 4-frame blink와 `RIC` text를 남깁니다. PENETRATION은 기존 `damageEnemy` path로 HP를 정확히 1 줄이고 6-frame blink와 `PEN` text를 남깁니다. 세 번의 PENETRATION으로 HP3 Enemy가 destroyed되며 Ricochet은 count에 포함되지 않습니다. 실제 reflected shell flight, NON-PENETRATION, armor thickness와 projectile penetration power는 구현하지 않았습니다.
+
+Gameplay HUD row에는 최근 결과를 `AR:<F/L/R/B> A:<degree> <PEN/RIC>` 형식으로 표시합니다. Reset 전 또는 아직 armor interaction이 없으면 `AR:- A:-- ---`입니다. START menu가 열린 동안 기존 계약대로 Projectile, Enemy, hit flash, cooldown과 armor result update가 모두 정지합니다.
+
+`S3_ARMOR_VERIFY=PASS`는 FRONT/SIDE perpendicular PEN, threshold 아래 PEN, unit 54 boundary RIC, threshold 위 RIC, HP unchanged/decrement, one-shell one-result, 3 PEN destruction, miss와 FE/02 wrap을 포함한 11개 deterministic case를 검사합니다. 기존 S1/S2/S3-01/menu verifier와 `ROM_VERIFY`도 함께 통과합니다. 기존 romdev headless harness는 FRONT, angle 0, PEN, HP 3→2와 one-result를 실제 ROM WRAM에서 확인합니다. 별도 headless WRAM fixture는 기존 P2 B fire path로 RIGHT face, normal `C0`, angle unit `36` hex(54 decimal), RIC와 HP 3 유지도 확인했습니다.
+
+최종 authoritative ROM은 262,144 bytes LoROM/SlowROM, ROM only, SRAM none입니다. Bank 00은 2,220 bytes(6.77%) free이며 required PVSnesLib/runtime symbol은 Bank 00에 남아 있습니다. 두 clean build의 deterministic SHA-256은 `b631c8de712eabbc90de905cad1b119ff711e8c24078facd0eace65d01432414`입니다.
+
+```text
+S3-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-03 — DO NOT PROCEED WITHOUT USER CONFIRMATION
+REAL SUPER FAMICOM — UNVERIFIED
+```
+
+사용자 Gate는 정면 직각 PEN/HP-1, 얕은 각도 RIC/HP 유지, 측면 직각 PEN과 sprite가 암시하는 각도 대비 결과의 납득 가능성입니다. 자동 경계값 검사를 반복할 필요는 없습니다.
 
 ---
 
@@ -942,18 +967,20 @@ CURRENT GATE
 S3 — CORE COMBAT
 
 CURRENT OBJECTIVE
-Verify one static Enemy AABB receives exactly one damage
-from each valid Player Projectile hit.
+Verify heading-aware Enemy armor face, impact angle,
+RICOCHET and PENETRATION outcomes.
 
 COMPLETED GATE
 S2 — INDEPENDENT TURRET — PASS / CLOSED / USER GO APPROVED 2026-08-25
 
 CURRENT STATUS
-S3-01 — IMPLEMENTED / USER PLAYTEST REQUIRED
-S3-01A-R1 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-01 — PASS / USER CONFIRMED 2026-08-25
+S3-01A-R1 — PASS / USER CONFIRMED 2026-08-25
+S3-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK
-S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage
+S3-02 — Armor Face / Impact Angle / Ricochet V0
 
-Do not mark S3-01 PASS or proceed to S3-02, Armor Face, Impact Angle, Ricochet, Non-Penetration or Penetration without user confirmation.
+Do not mark S3-02 PASS or proceed to S3-03, Non-Penetration,
+Armor Thickness or Penetration Power without user confirmation.
 ```

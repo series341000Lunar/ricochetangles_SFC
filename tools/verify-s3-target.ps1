@@ -21,8 +21,8 @@ Assert-SourcePattern '#define\s+ENEMY_INITIAL_X\s+208\b' 'Static Enemy initial X
 Assert-SourcePattern '#define\s+ENEMY_INITIAL_Y\s+144\b' 'Static Enemy initial Y must be 144.'
 Assert-SourcePattern '#define\s+ENEMY_INITIAL_HEADING\s+128\b' 'Static Enemy must face LEFT at heading 128.'
 Assert-SourcePattern '#define\s+ENEMY_MAX_HP\s+3\b' 'Static Enemy verification HP must be 3.'
-Assert-SourcePattern '#define\s+ENEMY_HITBOX_HALF_WIDTH\s+13\b' 'Enemy AABB half-width must be 13 pixels.'
-Assert-SourcePattern '#define\s+ENEMY_HITBOX_HALF_HEIGHT\s+13\b' 'Enemy AABB half-height must be 13 pixels.'
+Assert-SourcePattern '#define\s+ENEMY_ARMOR_HALF_LENGTH\s+13\b' 'Enemy armor half-length must preserve the S3-01 longitudinal extent.'
+Assert-SourcePattern '#define\s+ENEMY_ARMOR_HALF_WIDTH\s+10\b' 'Enemy armor half-width must define a non-square local hull rectangle.'
 Assert-SourcePattern '#define\s+ENEMY_HIT_FLASH_FRAMES\s+6\b' 'Enemy hit blink must last 6 frames.'
 Assert-SourcePattern '#define\s+SHELL_SPEED_PIXELS\s+4\b' 'Known-good shell speed changed.'
 Assert-SourcePattern 'typedef\s+struct\s*\{[^}]*u16\s+positionX\s*;[^}]*u16\s+positionY\s*;[^}]*u8\s+heading\s*;[^}]*u8\s+hp\s*;[^}]*u8\s+maxHp\s*;[^}]*u8\s+active\s*;[^}]*u8\s+hitFlashFrames\s*;[^}]*\}\s*EnemyState\s*;' 'Minimal EnemyState contract is missing.'
@@ -30,7 +30,8 @@ Assert-SourcePattern 'static\s+EnemyState\s+enemy\s*;' 'S3-01 must use exactly o
 Assert-SourcePattern 'static\s+u8\s+enemyHitCount\s*;' 'Diagnostic hit counter is missing.'
 Assert-SourcePattern 'enemy\.positionX\s*=\s*\(u16\)ENEMY_INITIAL_X\s*<<\s*FIXED_SHIFT\s*;' 'Enemy reset does not restore initial X.'
 Assert-SourcePattern 'enemy\.positionY\s*=\s*\(u16\)ENEMY_INITIAL_Y\s*<<\s*FIXED_SHIFT\s*;' 'Enemy reset does not restore initial Y.'
-Assert-SourcePattern 'projectiles\[index\]\.active\s*=\s*0\s*;\s*damageEnemy\(enemy\)\s*;\s*continue\s*;' 'A hit must deactivate its shell before applying one damage and leave the slot loop.'
+Assert-SourcePattern 'projectiles\[index\]\.active\s*=\s*0\s*;\s*lastArmorImpact\s*=\s*impact\s*;' 'An armor interaction must deactivate its shell before resolving the outcome.'
+Assert-SourcePattern 'else\s*\{\s*damageEnemy\(enemy\)\s*;\s*\}\s*continue\s*;' 'The penetration branch must apply one damage and leave the slot loop.'
 Assert-SourcePattern 'enemy->hp--\s*;\s*enemyHitCount\+\+\s*;' 'A valid hit must decrement HP and increment the diagnostic count exactly once.'
 Assert-SourcePattern 'if\s*\(enemy->hp\s*==\s*0\)\s*\{\s*enemy->active\s*=\s*0\s*;' 'HP 0 must deactivate the Enemy.'
 Assert-SourcePattern 'if\s*\(\(padDown\s*&\s*KEY_SELECT\)\s*!=\s*0\)\s*\{\s*initializeProjectiles\(\)\s*;\s*initializeEnemy\(\)\s*;' 'P1 SELECT must reset the Enemy and clear all active shells.'
@@ -40,19 +41,16 @@ Assert-SourcePattern 'updateProjectiles\(&enemy\)\s*;' 'Projectile update is not
 
 $collisionMatch = [regex]::Match(
     $source,
-    'static\s+u8\s+projectileHitsEnemy\s*\([^)]*\)\s*\{(?<body>.*?)\}\s*static\s+void\s+damageEnemy',
+    'static\s+u8\s+resolveEnemyArmorImpact\s*\([^)]*\)\s*\{(?<body>.*?)\}\s*static\s+void\s+damageEnemy',
     [System.Text.RegularExpressions.RegexOptions]::Singleline)
 if (-not $collisionMatch.Success) {
-    throw 'Unable to isolate the S3-01 point/AABB collision test.'
+    throw 'Unable to isolate the S3-02 heading-aware armor collision test.'
 }
 $collisionBody = $collisionMatch.Groups['body'].Value
-foreach ($requiredToken in @('ENEMY_HITBOX_HALF_WIDTH', 'ENEMY_HITBOX_HALF_HEIGHT')) {
+foreach ($requiredToken in @('ENEMY_ARMOR_HALF_LENGTH', 'ENEMY_ARMOR_HALF_WIDTH', 'enemy->heading', 'previousForward', 'previousRight', 'currentForward', 'currentRight')) {
     if (-not $collisionBody.Contains($requiredToken)) {
         throw "Enemy collision test is missing $requiredToken."
     }
-}
-if ([regex]::IsMatch($collisionBody, 'heading|sin256|cos256|armor|ricochet|penetration')) {
-    throw 'S3-01 collision must remain an axis-aligned point/AABB test independent of heading and armor.'
 }
 
 $updateMatch = [regex]::Match(
@@ -64,7 +62,7 @@ if (-not $updateMatch.Success) {
 }
 $updateBody = $updateMatch.Groups['body'].Value
 $moveIndex = $updateBody.IndexOf('addProjectileDelta', [System.StringComparison]::Ordinal)
-$hitIndex = $updateBody.IndexOf('projectileHitsEnemy', [System.StringComparison]::Ordinal)
+$hitIndex = $updateBody.IndexOf('resolveEnemyArmorImpact', [System.StringComparison]::Ordinal)
 if ($moveIndex -lt 0 -or $hitIndex -lt 0 -or $moveIndex -ge $hitIndex) {
     throw 'Projectile collision must be tested after the Projectile moves.'
 }
@@ -127,7 +125,7 @@ Write-Output 'S3_TARGET_VERIFY=PASS'
 Write-Output 'ENEMY_POSITION=208,144'
 Write-Output 'ENEMY_HEADING=128'
 Write-Output 'ENEMY_HP=3'
-Write-Output 'ENEMY_COLLISION=POINT_AABB_26x26'
+Write-Output 'ENEMY_COLLISION=SEGMENT_ORIENTED_RECT_26x20'
 Write-Output 'ENEMY_DAMAGE_PER_HIT=1'
 Write-Output 'ENEMY_HIT_FLASH_FRAMES=6'
 Write-Output 'ENEMY_RESET=P1_SELECT_DOWN'

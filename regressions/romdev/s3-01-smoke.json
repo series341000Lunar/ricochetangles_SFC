@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "name": "s3-02-static-enemy-perpendicular-penetration",
+  "platform": "snes",
+  "romPath": "build/rom/ricochetangles_s0_hello.sfc",
+  "symbolPath": "build/work/ricochetangles_s0_hello.sym",
+  "artifacts": {
+    "directory": "build/romdev/s3-01",
+    "resolved": "build/romdev/s3-01/resolved.json",
+    "captureArgs": "build/romdev/s3-01/capture-args.json",
+    "checkArgs": "build/romdev/s3-01/check-args.json",
+    "golden": "build/romdev/s3-01/golden.json",
+    "runAScreenshot": "build/romdev/s3-01/run-a-frame110.png",
+    "runBScreenshot": "build/romdev/s3-01/run-b-frame110.png"
+  },
+  "symbols": {
+    "enemy": "tccs_src/main.asm_enemy",
+    "lastArmorImpact": "tccs_src/main.asm_lastArmorImpact",
+    "enemyHitCount": "tccs_src/main.asm_enemyHitCount",
+    "fireCooldown": "tccs_src/main.asm_fireCooldown"
+  },
+  "fields": {
+    "enemy_hp": {
+      "symbol": "enemy",
+      "relativeOffset": 5,
+      "length": 1
+    },
+    "enemy_hit_flash": {
+      "symbol": "enemy",
+      "relativeOffset": 8,
+      "length": 1
+    },
+    "enemy_hit_count": {
+      "symbol": "enemyHitCount",
+      "relativeOffset": 0,
+      "length": 1
+    },
+    "armor_face": {
+      "symbol": "lastArmorImpact",
+      "relativeOffset": 4,
+      "length": 1
+    },
+    "armor_impact_angle": {
+      "symbol": "lastArmorImpact",
+      "relativeOffset": 6,
+      "length": 1
+    },
+    "armor_result": {
+      "symbol": "lastArmorImpact",
+      "relativeOffset": 7,
+      "length": 1
+    },
+    "fire_cooldown": {
+      "symbol": "fireCooldown",
+      "relativeOffset": 0,
+      "length": 1
+    }
+  },
+  "inputScript": [
+    { "atFrame": 0, "ports": [{}, {}] },
+    { "atFrame": 60, "ports": [{ "start": true }, {}] },
+    { "atFrame": 61, "ports": [{}, {}] },
+    { "atFrame": 62, "ports": [{ "down": true }, {}] },
+    { "atFrame": 63, "ports": [{}, {}] },
+    { "atFrame": 64, "ports": [{ "right": true }, {}] },
+    { "atFrame": 65, "ports": [{}, {}] },
+    { "atFrame": 66, "ports": [{ "start": true }, {}] },
+    { "atFrame": 67, "ports": [{}, {}] },
+    { "atFrame": 68, "ports": [{}, { "right": true }] },
+    { "atFrame": 69, "ports": [{}, { "right": true, "b": true }] },
+    { "atFrame": 70, "ports": [{}, { "right": true }] },
+    { "atFrame": 110, "ports": [{}, {}] }
+  ],
+  "checkpoints": [
+    {
+      "frame": 60,
+      "label": "initial",
+      "assertions": [
+        { "field": "enemy_hp", "expectedHex": "03" },
+        { "field": "enemy_hit_count", "expectedHex": "00" }
+      ]
+    },
+    {
+      "frame": 96,
+      "label": "hit",
+      "assertions": [
+        { "field": "enemy_hp", "expectedHex": "02" },
+        { "field": "enemy_hit_count", "expectedHex": "01" },
+        { "field": "armor_face", "expectedHex": "01" },
+        { "field": "armor_impact_angle", "expectedHex": "00" },
+        { "field": "armor_result", "expectedHex": "02" }
+      ]
+    },
+    {
+      "frame": 110,
+      "label": "final",
+      "assertions": [
+        { "field": "enemy_hp", "expectedHex": "02" },
+        { "field": "enemy_hit_count", "expectedHex": "01" },
+        { "field": "armor_face", "expectedHex": "01" },
+        { "field": "armor_impact_angle", "expectedHex": "00" },
+        { "field": "armor_result", "expectedHex": "02" },
+        { "field": "enemy_hit_flash", "expectedHex": "00" },
+        { "field": "fire_cooldown", "expectedHex": "00" }
+      ]
+    }
+  ]
+}

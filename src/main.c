@@ -26,9 +26,13 @@
 #define ENEMY_INITIAL_Y 144
 #define ENEMY_INITIAL_HEADING 128
 #define ENEMY_MAX_HP 3
-#define ENEMY_HITBOX_HALF_WIDTH 13
-#define ENEMY_HITBOX_HALF_HEIGHT 13
+#define ENEMY_ARMOR_HALF_LENGTH 13
+#define ENEMY_ARMOR_HALF_WIDTH 10
+#define ENEMY_ARMOR_BOUNDING_RADIUS 18
 #define ENEMY_HIT_FLASH_FRAMES 6
+#define ENEMY_RICOCHET_FLASH_FRAMES 4
+#define RICOCHET_THRESHOLD_DEGREES 75
+#define RICOCHET_THRESHOLD_HEADING_UNITS 54
 
 #define AIM_GAIN 1
 #define AIM_DEADZONE 5
@@ -113,6 +117,32 @@ typedef struct
 
 typedef enum
 {
+    ARMOR_FACE_NONE = 0,
+    ARMOR_FACE_FRONT = 1,
+    ARMOR_FACE_LEFT = 2,
+    ARMOR_FACE_RIGHT = 3,
+    ARMOR_FACE_REAR = 4
+} ArmorFace;
+
+typedef enum
+{
+    ARMOR_RESULT_NONE = 0,
+    ARMOR_RESULT_RICOCHET = 1,
+    ARMOR_RESULT_PENETRATION = 2
+} ArmorResult;
+
+typedef struct
+{
+    u16 pointX;
+    u16 pointY;
+    u8 face;
+    u8 normalHeading;
+    u8 impactAngle;
+    u8 result;
+} ArmorImpact;
+
+typedef enum
+{
     AIM_MODE_MOUSE = 0,
     AIM_MODE_PAD2 = 1
 } AimMode;
@@ -127,6 +157,7 @@ typedef enum
 #define MENU_ROW_AIM 1
 
 static const char hexDigits[] = "0123456789ABCDEF";
+static const char armorFaceLetters[] = "-FLRB";
 static HullState hull;
 static TurretState turret;
 static AimState aim;
@@ -136,6 +167,7 @@ static u8 menuOpen;
 static u8 menuSelection;
 static ProjectileState projectiles[MAX_PLAYER_SHELLS];
 static EnemyState enemy;
+static ArmorImpact lastArmorImpact;
 static u8 enemyHitCount;
 static u8 fireCooldown;
 static u8 previousFireHeld;
@@ -165,6 +197,20 @@ static void formatHex8(u8 value, char *output)
 {
     output[0] = hexDigits[(value >> 4) & 0x0F];
     output[1] = hexDigits[value & 0x0F];
+}
+
+static void formatImpactDegrees(u8 headingUnits, char *output)
+{
+    u8 degrees = (u8)(((u16)headingUnits * 90) >> 6);
+    u8 tens = 0;
+
+    while (degrees >= 10)
+    {
+        degrees -= 10;
+        tens++;
+    }
+    output[0] = (char)('0' + tens);
+    output[1] = (char)('0' + degrees);
 }
 
 static s16 sin256(u8 angle)
@@ -427,25 +473,186 @@ static void initializeEnemy(void)
     enemy.maxHp = ENEMY_MAX_HP;
     enemy.active = 1;
     enemy.hitFlashFrames = 0;
+    lastArmorImpact.pointX = 0;
+    lastArmorImpact.pointY = 0;
+    lastArmorImpact.face = ARMOR_FACE_NONE;
+    lastArmorImpact.normalHeading = 0;
+    lastArmorImpact.impactAngle = 0;
+    lastArmorImpact.result = ARMOR_RESULT_NONE;
     enemyHitCount = 0;
 }
 
-static u8 projectileHitsEnemy(u16 pixelX, u16 pixelY, const EnemyState *enemy)
+static u8 shortestHeadingDistance(u8 first, u8 second)
 {
-    u16 enemyX;
-    u16 enemyY;
+    u8 difference = (u8)(first - second);
+
+    return difference > 128 ? (u8)(0 - difference) : difference;
+}
+
+static u8 entryFractionIsEarlier(
+    u16 candidateNumerator,
+    u16 candidateDenominator,
+    u16 entryNumerator,
+    u16 entryDenominator)
+{
+    return candidateNumerator * entryDenominator <
+        entryNumerator * candidateDenominator;
+}
+
+static u8 resolveEnemyArmorImpact(
+    u16 previousX,
+    u16 previousY,
+    u16 currentX,
+    u16 currentY,
+    u8 projectileHeading,
+    const EnemyState *enemy,
+    ArmorImpact *impact)
+{
+    s16 previousPixelX = (s16)(previousX >> FIXED_SHIFT);
+    s16 previousPixelY = (s16)(previousY >> FIXED_SHIFT);
+    s16 currentPixelX = (s16)(currentX >> FIXED_SHIFT);
+    s16 currentPixelY = (s16)(currentY >> FIXED_SHIFT);
+    s16 enemyPixelX = (s16)(enemy->positionX >> FIXED_SHIFT);
+    s16 enemyPixelY = (s16)(enemy->positionY >> FIXED_SHIFT);
+    s16 previousDeltaX;
+    s16 previousDeltaY;
+    s16 currentDeltaX;
+    s16 currentDeltaY;
+    s16 forwardX;
+    s16 forwardY;
+    s16 previousForward;
+    s16 previousRight;
+    s16 currentForward;
+    s16 currentRight;
+    s16 halfLength = ENEMY_ARMOR_HALF_LENGTH;
+    s16 halfWidth = ENEMY_ARMOR_HALF_WIDTH;
+    u16 entryNumerator = 0;
+    u16 entryDenominator = 1;
+    u16 candidateNumerator;
+    u16 candidateDenominator;
+    s16 segmentX;
+    s16 segmentY;
+    u8 face = ARMOR_FACE_NONE;
+    u8 candidateFace = ARMOR_FACE_NONE;
+    u8 normalHeading;
+    u8 attackHeading;
+    u8 impactAngle;
 
     if (enemy->active == 0)
     {
         return 0;
     }
 
-    enemyX = enemy->positionX >> FIXED_SHIFT;
-    enemyY = enemy->positionY >> FIXED_SHIFT;
-    return pixelX >= enemyX - ENEMY_HITBOX_HALF_WIDTH &&
-        pixelX <= enemyX + ENEMY_HITBOX_HALF_WIDTH &&
-        pixelY >= enemyY - ENEMY_HITBOX_HALF_HEIGHT &&
-        pixelY <= enemyY + ENEMY_HITBOX_HALF_HEIGHT;
+    if (currentPixelX < enemyPixelX - ENEMY_ARMOR_BOUNDING_RADIUS ||
+        currentPixelX > enemyPixelX + ENEMY_ARMOR_BOUNDING_RADIUS ||
+        currentPixelY < enemyPixelY - ENEMY_ARMOR_BOUNDING_RADIUS ||
+        currentPixelY > enemyPixelY + ENEMY_ARMOR_BOUNDING_RADIUS)
+    {
+        return 0;
+    }
+
+    previousDeltaX = previousPixelX - enemyPixelX;
+    previousDeltaY = previousPixelY - enemyPixelY;
+    currentDeltaX = currentPixelX - enemyPixelX;
+    currentDeltaY = currentPixelY - enemyPixelY;
+    forwardX = cos256(enemy->heading);
+    forwardY = sin256(enemy->heading);
+    previousForward = (previousDeltaX * forwardX + previousDeltaY * forwardY) >> FIXED_SHIFT;
+    previousRight = (-previousDeltaX * forwardY + previousDeltaY * forwardX) >> FIXED_SHIFT;
+    currentForward = (currentDeltaX * forwardX + currentDeltaY * forwardY) >> FIXED_SHIFT;
+    currentRight = (-currentDeltaX * forwardY + currentDeltaY * forwardX) >> FIXED_SHIFT;
+
+    if (currentForward < -halfLength || currentForward > halfLength ||
+        currentRight < -halfWidth || currentRight > halfWidth)
+    {
+        return 0;
+    }
+
+    if (previousForward > halfLength)
+    {
+        candidateFace = ARMOR_FACE_FRONT;
+        candidateNumerator = (u16)(previousForward - halfLength);
+        candidateDenominator = (u16)(previousForward - currentForward);
+    }
+    else if (previousForward < -halfLength)
+    {
+        candidateFace = ARMOR_FACE_REAR;
+        candidateNumerator = (u16)(-halfLength - previousForward);
+        candidateDenominator = (u16)(currentForward - previousForward);
+    }
+
+    if (candidateFace != ARMOR_FACE_NONE)
+    {
+        face = candidateFace;
+        entryNumerator = candidateNumerator;
+        entryDenominator = candidateDenominator;
+    }
+
+    candidateFace = ARMOR_FACE_NONE;
+    if (previousRight > halfWidth)
+    {
+        candidateFace = ARMOR_FACE_RIGHT;
+        candidateNumerator = (u16)(previousRight - halfWidth);
+        candidateDenominator = (u16)(previousRight - currentRight);
+    }
+    else if (previousRight < -halfWidth)
+    {
+        candidateFace = ARMOR_FACE_LEFT;
+        candidateNumerator = (u16)(-halfWidth - previousRight);
+        candidateDenominator = (u16)(currentRight - previousRight);
+    }
+
+    if (candidateFace != ARMOR_FACE_NONE &&
+        (face == ARMOR_FACE_NONE || entryFractionIsEarlier(
+            candidateNumerator,
+            candidateDenominator,
+            entryNumerator,
+            entryDenominator) != 0))
+    {
+        face = candidateFace;
+        entryNumerator = candidateNumerator;
+        entryDenominator = candidateDenominator;
+    }
+
+    if (face == ARMOR_FACE_NONE || entryDenominator <= 0)
+    {
+        return 0;
+    }
+
+    if (face == ARMOR_FACE_FRONT)
+    {
+        normalHeading = enemy->heading;
+    }
+    else if (face == ARMOR_FACE_REAR)
+    {
+        normalHeading = (u8)(enemy->heading + 128);
+    }
+    else if (face == ARMOR_FACE_RIGHT)
+    {
+        normalHeading = (u8)(enemy->heading + 64);
+    }
+    else
+    {
+        normalHeading = (u8)(enemy->heading - 64);
+    }
+
+    attackHeading = (u8)(projectileHeading + 128);
+    impactAngle = shortestHeadingDistance(attackHeading, normalHeading);
+    if (impactAngle > 64)
+    {
+        impactAngle = 64;
+    }
+
+    segmentX = currentPixelX - previousPixelX;
+    segmentY = currentPixelY - previousPixelY;
+    impact->pointX = (u16)(previousPixelX + segmentX * entryNumerator / entryDenominator);
+    impact->pointY = (u16)(previousPixelY + segmentY * entryNumerator / entryDenominator);
+    impact->face = face;
+    impact->normalHeading = normalHeading;
+    impact->impactAngle = impactAngle;
+    impact->result = impactAngle >= RICOCHET_THRESHOLD_HEADING_UNITS ?
+        ARMOR_RESULT_RICOCHET : ARMOR_RESULT_PENETRATION;
+    return 1;
 }
 
 static void damageEnemy(EnemyState *enemy)
@@ -464,6 +671,9 @@ static void updateProjectiles(EnemyState *enemy)
     u8 index;
     u16 pixelX;
     u16 pixelY;
+    u16 previousX;
+    u16 previousY;
+    ArmorImpact impact;
 
     for (index = 0; index < MAX_PLAYER_SHELLS; index++)
     {
@@ -472,6 +682,8 @@ static void updateProjectiles(EnemyState *enemy)
             continue;
         }
 
+        previousX = projectiles[index].positionX;
+        previousY = projectiles[index].positionY;
         if (addProjectileDelta(&projectiles[index].positionX, projectiles[index].velocityX) == 0 ||
             addProjectileDelta(&projectiles[index].positionY, projectiles[index].velocityY) == 0)
         {
@@ -481,10 +693,25 @@ static void updateProjectiles(EnemyState *enemy)
 
         pixelX = projectiles[index].positionX >> FIXED_SHIFT;
         pixelY = projectiles[index].positionY >> FIXED_SHIFT;
-        if (projectileHitsEnemy(pixelX, pixelY, enemy) != 0)
+        if (resolveEnemyArmorImpact(
+                previousX,
+                previousY,
+                projectiles[index].positionX,
+                projectiles[index].positionY,
+                projectiles[index].heading,
+                enemy,
+                &impact) != 0)
         {
             projectiles[index].active = 0;
-            damageEnemy(enemy);
+            lastArmorImpact = impact;
+            if (impact.result == ARMOR_RESULT_RICOCHET)
+            {
+                enemy->hitFlashFrames = ENEMY_RICOCHET_FLASH_FRAMES;
+            }
+            else
+            {
+                damageEnemy(enemy);
+            }
             continue;
         }
 
@@ -902,13 +1129,15 @@ static void drawGameplayText(void)
     consoleDrawText(8, 12, "                        ");
     consoleDrawText(13, 0, "DRV:P AIM:M EN:3");
     consoleDrawText(13, 1, "H:00 T:00 G:0 S:0");
-    consoleDrawText(0, 2, "                               ");
-    consoleDrawText(21, 2, "S3-01A-R1");
+    consoleDrawText(0, 2, "             AR:- A:-- ---     ");
+    consoleDrawText(0, 3, "S3-02");
     drawFooter();
 }
 
 static void drawControlMenu(void)
 {
+    consoleDrawText(0, 2, "                               ");
+    consoleDrawText(0, 3, "                               ");
     consoleDrawText(9, 2, "RicochetAngles");
     consoleDrawText(4, 7, menuSelection == MENU_ROW_DRIVE ? "> DRIVE" : "  DRIVE");
     consoleDrawText(17, 7, driveMode == DRIVE_MODE_PC_LIKE ? "PC-LIKE" : "STICK  ");
@@ -1156,6 +1385,25 @@ int main(void)
         consoleDrawText(25, 1, "%s", statusValue);
         statusValue[0] = hexDigits[countActiveProjectiles() & 0x0F];
         consoleDrawText(29, 1, "%s", statusValue);
+
+        statusValue[0] = armorFaceLetters[lastArmorImpact.face];
+        statusValue[1] = '\0';
+        consoleDrawText(16, 2, "%s", statusValue);
+        if (lastArmorImpact.result == ARMOR_RESULT_NONE)
+        {
+            consoleDrawText(20, 2, "--");
+        }
+        else
+        {
+            formatImpactDegrees(lastArmorImpact.impactAngle, statusValue);
+            statusValue[2] = '\0';
+            consoleDrawText(20, 2, "%s", statusValue);
+        }
+        consoleDrawText(
+            23,
+            2,
+            lastArmorImpact.result == ARMOR_RESULT_RICOCHET ? "RIC" :
+                (lastArmorImpact.result == ARMOR_RESULT_PENETRATION ? "PEN" : "---"));
     }
 
     return 0;

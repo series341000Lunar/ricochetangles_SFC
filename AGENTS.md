@@ -42,7 +42,7 @@ S3 — CORE COMBAT
 
 현재 목표는 게임 전체 구현이 아니다.
 
-S0와 S1은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. S2-02A는 사용자가 P1 SELECT Aim Mode 전환, P2 Pad 8방향 조준과 P2 B 발사를 직접 확인하여 2026-08-25 `PASS / USER CONFIRMED`됐다. 사용자의 GO 결정에 따라 S2도 `PASS / CLOSED`됐으며, 현재 목표는 S3-01의 정적 Enemy와 Player Projectile hit foundation 검증이다.
+S0와 S1은 2026-08-23 사용자 GO 결정으로 `PASS / CLOSED`되었다. S2-02A는 사용자가 P1 SELECT Aim Mode 전환, P2 Pad 8방향 조준과 P2 B 발사를 직접 확인하여 2026-08-25 `PASS / USER CONFIRMED`됐다. 사용자의 GO 결정에 따라 S2도 `PASS / CLOSED`됐다. S3-01과 S3-01A-R1도 2026-08-25 사용자 직접 확인으로 `PASS / USER CONFIRMED`됐으며, 현재 목표는 S3-02의 heading-aware Armor Face / Impact Angle / Ricochet V0 검증이다.
 
 ```text
 PLAYER PROJECTILE
@@ -255,11 +255,11 @@ CURRENT GATE
 S3 — CORE COMBAT
 
 CURRENT STATUS
-S3-01 — IMPLEMENTED / USER PLAYTEST REQUIRED
-S3-01A-R1 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-01 — PASS / USER CONFIRMED 2026-08-25
+S3-01A-R1 — PASS / USER CONFIRMED 2026-08-25
 
 CURRENT SUBTASK
-S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage
+S3-02 — Armor Face / Impact Angle / Ricochet V0
 
 이 환경 정보가 실제 개발기와 다르다는 사실이 확인되면 조용히 다른 경로를 선택하지 않는다.
 
@@ -332,6 +332,40 @@ HTML JavaScript 또는 Godot 코드를 SFC 코드에 직접 연결하지 않는�
 단 코드에 명백한 실수나 회귀가 있다고 판단되면 코드가 존재한다는 이유만으로 그것을 새로운 설계 계약으로 승격하지 않는다.
 
 불명확하면 임의로 설계를 확정하지 말고 차이를 보고한다.
+
+## Validation Authority and romdev Role
+
+검증 권위는 다음 순서로 고정한다.
+
+```text
+scripts/build.ps1 + existing verifiers
+→ authoritative build / static validation
+
+romdev
+→ headless automated runtime regression / memory debug
+
+MesenCE
+→ primary human emulator validation
+
+bsnes
+→ secondary emulator compatibility validation
+
+Real Super Famicom
+→ final hardware truth
+```
+
+romdev의 `PASS`는 MesenCE, bsnes 또는 실제 Super Famicom의 `PASS`를 의미하지 않는다. 자동 runtime regression, 사람의 조작·가독성 검증, cross-emulator compatibility와 real hardware 검증을 각각 분리해 보고한다.
+
+romdev는 이 저장소에서 기존 `scripts/build.ps1` 산출물에 대한 Agent Regression / Debug Harness로만 사용한다.
+
+* canonical PVSnesLib 4.6.0 / MSYS2 build 환경을 교체하지 않는다.
+* romdev bundled compiler 또는 bundled toolchain으로 RicochetAngles를 재빌드하지 않는다.
+* `scripts/build.ps1`이 생성한 `build\rom\*.sfc`만 romdev에 load한다.
+* 기본 실행은 `HEADLESS`다.
+* romdev `playtest`, SDL 또는 별도 GUI window는 사용자가 명시적으로 요청할 때만 연다.
+* MesenCE 또는 bsnes를 Agent regression 과정에서 자동 실행하지 않는다.
+* romdev 작업을 이유로 Git commit 또는 push를 실행하지 않는다.
+* screenshot은 진단 artifact이며 gameplay memory assertion과 분리한다. screenshot mismatch만으로 gameplay hard `PASS` 또는 `FAIL`을 대체하지 않는다.
 
 ---
 
@@ -756,13 +790,19 @@ S2-02는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. MesenCE와 bsnes boot, clean
 
 현재 S3-01은 정지한 Enemy Tank 1대에 대한 Player Projectile 충돌 foundation만 검증한다. Enemy는 위치, heading, HP 3, active와 짧은 hit blink 상태를 가지며 움직임, AI, 포탑, 발사 기능은 없다. 충돌은 Projectile 중심점과 회전하지 않는 단순 AABB로 처리하고, 유효한 hit는 shell을 즉시 비활성화한 뒤 damage 1을 정확히 한 번 적용한다. HP 0에서 Enemy OBJ를 숨기며 P1 SELECT는 DEV/diagnostic reset으로 Enemy와 Projectile pool을 초기화한다.
 
-S3-01 구현 직후 상태는 `IMPLEMENTED / USER PLAYTEST REQUIRED`다. 사용자가 Miss, Hit, 3-hit destruction, Reset, Mouse hit와 PAD2 hit를 직접 확인하기 전에는 PASS로 승격하지 않는다. Armor Face, Impact Angle, Ricochet, Non-Penetration과 Penetration은 S3-01 범위 밖이며 사용자 승인 없이 S3-02로 진행하지 않는다.
+사용자는 2026-08-25 Enemy hit와 3회 유효 명중 뒤 destruction을 직접 확인했다. 따라서 S3-01은 `PASS / USER CONFIRMED 2026-08-25`다. 이 기록은 사용자가 이번 확인에서 별도로 열거하지 않은 Miss, Reset 또는 장치별 세부 시나리오까지 확인한 것으로 확장하지 않는다.
 
 현재 S3-01A-R1은 P1 START Runtime Control Menu를 제공한다. 메뉴의 두 항목은 `DRIVE PC-LIKE/STICK`과 `AIM MOUSE/P2 PAD`이며 제목은 `RicochetAngles`, 하단 footer는 `CHANNEL A BNC`다. 기본값은 PC-LIKE와 MOUSE이고 선택값은 현재 실행 세션 동안 유지된다. STICK은 P1 D-pad를 8방향 world heading으로 해석해 기존 `TURN_RATE=2`와 가속/관성을 그대로 사용한다. P2 PAD Aim과 STICK Drive는 반대 축 동시 입력을 축별 neutral로 만드는 같은 작은 direction resolver를 공유한다.
 
 메뉴가 열린 동안 Hull, Turret, Aim, Projectile, Enemy, hit flash와 fire cooldown gameplay update는 정지한다. START로 복귀할 때 fire input을 disarm하여 해당 장치의 발사 버튼 release 전 accidental shot을 막는다. START가 메뉴 전용이 됐으므로 S3-01 DEV Enemy Reset은 P1 SELECT로 이동했다. 기존 S0/S1 verbose raw diagnostic은 Bank 00 절감을 위해 compact HUD로 축소했지만 현재 Drive/Aim, Enemy HP, Hull/Turret heading, fire held와 active shell count는 남겼다.
 
-S3-01A 초안은 Bank 00 free 28 bytes로 `oamInitGfxAttr`을 Bank 01로 밀어 final build가 실패했다. R1은 application-side 중복 방향 해석과 과거 verbose diagnostic formatting을 정리하여 Bank 00 free 5,301 bytes(16.18%)를 확보했고 `oamInitGfxAttr`을 Bank 00 `00:E922`에 복구했다. LoROM/SlowROM mapping, compiler option과 PVSnesLib 4.6.0은 변경하지 않았다. S3-01A-R1은 `IMPLEMENTED / USER PLAYTEST REQUIRED`이며 START menu usability, 두 Drive/Aim mode의 실제 조작감, pause/resume과 accidental-fire 방지는 사용자 확인 전 PASS가 아니다. 사용자가 이전 ROM의 Arcade Cabinet boot와 START 존재를 확인했지만 새 ROM은 다시 `ARCADE CABINET / USER PLAYTEST REQUIRED`이며 SELECT는 cabinet의 정식 경로로 가정하지 않는다. Arcade Cabinet은 실제 Super Famicom 검증이 아니다.
+S3-01A 초안은 Bank 00 free 28 bytes로 `oamInitGfxAttr`을 Bank 01로 밀어 final build가 실패했다. R1은 application-side 중복 방향 해석과 과거 verbose diagnostic formatting을 정리하여 Bank 00 free 5,301 bytes(16.18%)를 확보했고 `oamInitGfxAttr`을 Bank 00 `00:E922`에 복구했다. LoROM/SlowROM mapping, compiler option과 PVSnesLib 4.6.0은 변경하지 않았다. 사용자는 2026-08-25 START Menu, DRIVE PC-LIKE/STICK, AIM MOUSE/P2 PAD와 Arcade Cabinet 실제 플레이를 직접 확인했다. 따라서 S3-01A-R1은 `PASS / USER CONFIRMED 2026-08-25`다. Arcade Cabinet 결과는 `ADDITIONAL COMPATIBILITY / TWIN-STICK TEST — PASS / USER CONFIRMED`이며 실제 Super Famicom 검증이 아니다. SELECT는 cabinet의 정식 gameplay 경로로 가정하지 않는다.
+
+현재 S3-02는 Enemy heading을 실제 gameplay armor geometry에 연결한다. Enemy는 local forward half-length 13 px, local right half-width 10 px의 회전된 rectangle과 FRONT/LEFT SIDE/RIGHT SIDE/REAR 4면을 가진다. Projectile previous/current integer-pixel segment를 Enemy-local 좌표로 변환하고, 두 boundary를 함께 통과한 corner에서는 정수 교차곱으로 더 이른 entry face 하나만 선택한다. Impact point는 integer world pixel, outward normal과 impact angle은 기존 0–255 heading 체계를 사용한다.
+
+Impact angle 내부 표현은 `0..64`이며 0은 armor normal에 직각, 64는 surface를 스치는 90도 hit다. HTML 기준판의 일반 `autoRicochetAngleDegrees=75`를 보존한다. 0–255 heading 격자에서 75도 이상인 첫 단위는 54이므로 `impactAngle >= 54`를 RICOCHET으로 처리한다. 54 units는 75.9375도이며 HUD에는 정수 degree floor로 표시한다. RICOCHET은 shell을 종료하고 Enemy HP를 유지하며, 그 외 generic shell hit은 PENETRATION으로 기존 `damageEnemy` path를 통해 HP를 정확히 1 감소시킨다. NON-PENETRATION, armor thickness, penetration power와 reflected shell flight는 아직 구현하지 않는다.
+
+S3-02 자동검증과 romdev headless runtime regression은 구현됐지만 MesenCE/bsnes의 사람이 보는 angle/readability와 실제 조작 체감은 별도 확인이 필요하다. 따라서 현재 상태는 `S3-02 — IMPLEMENTED / USER PLAYTEST REQUIRED`이며 사용자 승인 없이 S3-03으로 진행하지 않는다.
 
 실제 조작감이 좋지 않다면 입력 방식을 변경할 수 있다.
 
@@ -1504,9 +1544,11 @@ Agent / Codex가 가능한 한 담당할 영역:
 
 20. S3 — CORE COMBAT — ACTIVE
 
-21. S3-01 — Static Enemy Target & Projectile Hit V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
+21. S3-01 — Static Enemy Target & Projectile Hit V0 — PASS / USER CONFIRMED 2026-08-25
 
-22. S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage — IMPLEMENTED / USER PLAYTEST REQUIRED
+22. S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage — PASS / USER CONFIRMED 2026-08-25
+
+23. S3-02 — Armor Face / Impact Angle / Ricochet V0 — IMPLEMENTED / USER PLAYTEST REQUIRED
 ```
 
 S0는 MesenCE 2.2.1과 bsnes nightly의 사용자 확인, Delta iOS 추가 호환성 확인, 결정적 clean build와 ROM sanity를 근거로 `PASS / CLOSED`되었다.
@@ -1519,7 +1561,7 @@ S0 종료 시점의 ROM/build/input 구현은 `KNOWN GOOD S0 BASELINE`이다. �
 
 # 45. Explicitly Forbidden Premature Work
 
-현재 S3-01 범위에서는 다음 작업을 선행하지 않는다.
+현재 S3-02 범위에서는 다음 작업을 선행하지 않는다.
 
 ```text
 NO ENEMY AI OR MOVEMENT
@@ -1527,9 +1569,9 @@ NO ENEMY TURRET OR FIRE
 NO TANK-vs-TANK COLLISION
 NO RELOAD SYSTEM BEYOND THE MINIMAL COOLDOWN
 NO RECOIL
-NO ARMOR FACE OR IMPACT ANGLE
-NO RICOCHET
-NO NON-PENETRATION OR PENETRATION
+NO NON-PENETRATION
+NO ARMOR THICKNESS OR PENETRATION POWER
+NO REFLECTED PROJECTILE FLIGHT
 NO AMMO TYPE
 NO PLAYER HP
 NO MAP
@@ -1645,19 +1687,20 @@ CURRENT GATE:
 S3 — CORE COMBAT
 
 CURRENT OBJECTIVE:
-Verify that a real Player Projectile collides with one static
-Enemy AABB and applies exactly one damage per shell.
+Verify that Enemy heading changes the impacted armor face and that
+the same generic shell penetrates or ricochets by impact angle.
 
 COMPLETED GATE:
 S2 — INDEPENDENT TURRET — PASS / CLOSED / USER GO APPROVED 2026-08-25
 
 CURRENT STATUS:
-S3-01 — IMPLEMENTED / USER PLAYTEST REQUIRED
-S3-01A-R1 — IMPLEMENTED / USER PLAYTEST REQUIRED
+S3-01 — PASS / USER CONFIRMED 2026-08-25
+S3-01A-R1 — PASS / USER CONFIRMED 2026-08-25
+S3-02 — IMPLEMENTED / USER PLAYTEST REQUIRED
 
 CURRENT SUBTASK:
-S3-01A-R1 — Bank 00 Size Reduction / Runtime Control Menu Salvage
+S3-02 — Armor Face / Impact Angle / Ricochet V0
 
-DO NOT MARK S3-01 PASS OR PROCEED TO S3-02, ARMOR FACE,
-IMPACT ANGLE, RICOCHET, NON-PEN OR PENETRATION WITHOUT USER CONFIRMATION.
+DO NOT MARK S3-02 PASS OR PROCEED TO S3-03, NON-PEN,
+ARMOR THICKNESS OR PENETRATION POWER WITHOUT USER CONFIRMATION.
 ```
